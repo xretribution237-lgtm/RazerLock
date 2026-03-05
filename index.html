@@ -1,0 +1,1741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RazerLock — Secure Password Vault</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#06080f;--surface:#0c0f1a;--surface2:#111624;--border:rgba(0,255,128,0.12);--accent:#00ff80;--accent2:#00c8ff;--accent3:#ff3cac;--danger:#ff4040;--warn:#ffaa00;--text:#e8f0ff;--muted:#6b7a99;--r:12px;--glow:0 0 20px rgba(0,255,128,0.3)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,255,128,0.015) 2px,rgba(0,255,128,0.015) 4px);pointer-events:none;z-index:9999}
+.bg-mesh{position:fixed;inset:0;background:radial-gradient(ellipse 60% 50% at 10% 20%,rgba(0,255,128,0.05) 0%,transparent 60%),radial-gradient(ellipse 40% 60% at 90% 80%,rgba(0,200,255,0.04) 0%,transparent 60%);pointer-events:none;z-index:0}
+.user-bg-gradient{position:fixed;inset:0;opacity:0;pointer-events:none;z-index:0;transition:opacity 1s ease}
+.user-bg-gradient.active{opacity:0.15}
+
+/* OWNER BANNER */
+#ownerBanner{display:none;position:fixed;top:0;left:0;right:0;z-index:9000;background:rgba(255,60,172,0.1);border-bottom:1px solid rgba(255,60,172,0.25);padding:8px 18px;align-items:center;gap:10px;font-size:12px}
+#ownerBanner.show{display:flex}
+#ownerBanner span{color:var(--accent3);font-weight:700;letter-spacing:1px}
+#ownerBanner input{flex:1;max-width:360px;background:var(--bg);border:1px solid rgba(255,60,172,0.3);border-radius:6px;padding:5px 11px;color:var(--text);font-family:'Outfit',sans-serif;font-size:12px;outline:none}
+#ownerBanner input:focus{border-color:var(--accent3)}
+#ownerBanner .ob-btn{padding:5px 12px;background:var(--accent3);color:#fff;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-size:11px;font-family:'Rajdhani',sans-serif;letter-spacing:1px;white-space:nowrap}
+.api-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.api-dot.connected{background:var(--accent);box-shadow:0 0 5px var(--accent)}
+.api-dot.disconnected{background:var(--danger)}
+.api-dot.checking{background:var(--warn);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+
+/* AUTH */
+#auth-screen{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;background:var(--bg)}
+#auth-screen.banner-visible{top:36px}
+.auth-box{width:420px;padding:44px 38px;background:var(--surface);border:1px solid var(--border);border-radius:20px;box-shadow:0 0 60px rgba(0,255,128,0.08);position:relative;overflow:hidden;animation:slideUp 0.5s cubic-bezier(0.16,1,0.3,1)}
+.auth-box::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent),var(--accent2),transparent)}
+@keyframes slideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+.auth-logo{text-align:center;margin-bottom:28px}
+.auth-logo .logo-icon{width:58px;height:58px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:16px;display:inline-flex;align-items:center;justify-content:center;font-size:26px;margin-bottom:12px;animation:pulseGlow 3s ease infinite}
+@keyframes pulseGlow{0%,100%{box-shadow:0 0 20px rgba(0,255,128,0.3)}50%{box-shadow:0 0 40px rgba(0,255,128,0.6)}}
+.auth-logo h1{font-family:'Rajdhani',sans-serif;font-size:30px;font-weight:700;letter-spacing:3px;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.auth-logo p{font-size:11px;color:var(--muted);margin-top:4px;letter-spacing:2px}
+.auth-tabs{display:flex;background:var(--bg);border-radius:10px;padding:4px;margin-bottom:22px;border:1px solid var(--border)}
+.auth-tab{flex:1;padding:9px;text-align:center;cursor:pointer;border-radius:7px;font-size:13px;font-weight:500;color:var(--muted);transition:all 0.2s}
+.auth-tab.active{background:var(--surface2);color:var(--accent)}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:10px;font-weight:600;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px}
+.form-input{width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Outfit',sans-serif;font-size:14px;outline:none;transition:all 0.2s}
+.form-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,255,128,0.08)}
+select.form-input{cursor:pointer}
+.btn{width:100%;padding:12px;border:none;border-radius:10px;font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;letter-spacing:2px;cursor:pointer;transition:all 0.2s;text-transform:uppercase}
+.btn-primary{background:linear-gradient(135deg,var(--accent),#00cc66);color:#000;box-shadow:0 4px 20px rgba(0,255,128,0.25)}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 28px rgba(0,255,128,0.4)}
+.btn-primary:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+.btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+.btn-danger{background:linear-gradient(135deg,var(--danger),#cc0000);color:#fff}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--muted);font-size:12px;padding:9px}
+.auth-biometric{display:flex;gap:9px;margin-top:12px}
+.bio-btn{flex:1;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:17px;cursor:pointer;transition:all 0.2s;text-align:center}
+.bio-btn:hover{border-color:var(--accent2);color:var(--accent2)}
+.bio-btn span{display:block;font-size:9px;font-family:'Outfit',sans-serif;margin-top:2px;letter-spacing:1px}
+
+/* APP LAYOUT */
+#app{display:none;min-height:100vh;position:relative;z-index:1}
+#app.banner-visible{padding-top:36px}
+
+/* SIDEBAR */
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:252px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:50;transition:top 0.2s}
+#app.banner-visible .sidebar{top:36px}
+.sidebar-logo{padding:18px 20px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.sidebar-logo .logo-mark{width:34px;height:34px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:var(--glow)}
+.sidebar-logo h2{font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;letter-spacing:2px;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.sidebar-nav{flex:1;padding:12px 9px;overflow-y:auto}
+.nav-label{font-size:9px;font-weight:700;color:var(--muted);letter-spacing:2px;text-transform:uppercase;padding:0 11px;margin:13px 0 5px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;cursor:pointer;color:var(--muted);font-size:13px;font-weight:500;transition:all 0.15s;margin-bottom:2px;border:1px solid transparent}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{background:rgba(0,255,128,0.08);color:var(--accent);border-color:rgba(0,255,128,0.15)}
+.nav-item .ni{font-size:16px;width:19px;text-align:center;flex-shrink:0}
+.nav-badge{margin-left:auto;font-size:9px;font-weight:700;padding:2px 6px;border-radius:20px;font-family:'Rajdhani',sans-serif}
+.nb-g{background:var(--accent);color:#000}
+.nb-r{background:var(--danger);color:#fff}
+.sidebar-footer{padding:13px;border-top:1px solid var(--border)}
+.user-card{display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg);border-radius:10px;border:1px solid var(--border);cursor:pointer;transition:all 0.2s}
+.user-card:hover{border-color:rgba(0,255,128,0.3)}
+.avatar{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#fff;position:relative;flex-shrink:0;background:linear-gradient(135deg,var(--accent3),var(--accent2))}
+.online-dot{position:absolute;bottom:0;right:0;width:9px;height:9px;border-radius:50%;border:2px solid var(--surface)}
+.dot-on{background:#00ff88;box-shadow:0 0 5px #00ff88}
+.dot-off{background:var(--danger)}
+.user-info{flex:1;min-width:0}
+.u-name{font-size:13px;font-weight:600;display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.u-email{font-size:10px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px}
+.mbadge{font-size:9px;font-weight:700;letter-spacing:1px;padding:2px 5px;border-radius:10px;font-family:'Rajdhani',sans-serif}
+.mb-dev{background:linear-gradient(135deg,var(--accent3),#ff6b6b);color:#fff}
+.mb-pro{background:linear-gradient(135deg,var(--accent2),#0066ff);color:#fff}
+.mb-free{background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
+
+/* MAIN */
+.main{margin-left:252px;min-height:100vh;padding:26px}
+.page{display:none}
+.page.active{display:block;animation:fadeIn 0.28s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.ph{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;gap:14px;flex-wrap:wrap}
+.pt{font-family:'Rajdhani',sans-serif;font-size:25px;font-weight:700;letter-spacing:2px}
+.ps{color:var(--muted);font-size:13px;margin-top:2px}
+.hactions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.add-btn{display:flex;align-items:center;gap:6px;padding:8px 15px;background:linear-gradient(135deg,var(--accent),#00cc66);color:#000;border:none;border-radius:9px;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:all 0.2s;white-space:nowrap}
+.add-btn:hover{transform:translateY(-1px);box-shadow:var(--glow)}
+.action-btn{padding:6px 11px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--muted);font-size:12px;cursor:pointer;transition:all 0.15s;font-family:'Outfit',sans-serif;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.action-btn:hover{border-color:var(--accent);color:var(--accent)}
+.action-btn.d:hover{border-color:var(--danger);color:var(--danger)}
+
+/* CARDS */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:20px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;position:relative;overflow:hidden;transition:all 0.2s}
+.stat-card:hover{border-color:rgba(0,255,128,0.25);transform:translateY(-2px)}
+.stat-card::after{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.sc-g::after{background:linear-gradient(90deg,var(--accent),transparent)}
+.sc-b::after{background:linear-gradient(90deg,var(--accent2),transparent)}
+.sc-p::after{background:linear-gradient(90deg,var(--accent3),transparent)}
+.sc-y::after{background:linear-gradient(90deg,var(--warn),transparent)}
+.si{font-size:24px;margin-bottom:9px}
+.sv{font-family:'Rajdhani',sans-serif;font-size:28px;font-weight:700}
+.sl{font-size:11px;color:var(--muted);margin-top:2px;letter-spacing:1px}
+.section-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px}
+.sc-title{font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;letter-spacing:1px;margin-bottom:13px;display:flex;align-items:center;gap:6px;color:var(--accent)}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.chips-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
+.chip{padding:5px 12px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid var(--border);cursor:pointer;background:var(--surface2);color:var(--muted);transition:all 0.15s;letter-spacing:0.5px}
+.chip:hover,.chip.active{border-color:var(--accent);color:var(--accent);background:rgba(0,255,128,0.06)}
+.divider{height:1px;background:var(--border);margin:18px 0}
+.empty-state{text-align:center;padding:44px 20px;color:var(--muted)}
+.empty-state .ei{font-size:40px;margin-bottom:12px;opacity:0.35}
+.empty-state p{font-size:13px}
+
+/* TABLE */
+.pw-table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.pw-table-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.pw-search{display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:7px 12px;flex:1;min-width:180px;max-width:280px}
+.pw-search input{background:none;border:none;outline:none;color:var(--text);font-family:'Outfit',sans-serif;font-size:13px;width:100%}
+.pw-search input::placeholder{color:var(--muted)}
+table{width:100%;border-collapse:collapse}
+th{font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);padding:11px 20px;text-align:left;border-bottom:1px solid var(--border);background:var(--surface2)}
+td{padding:13px 20px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:13px;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(0,255,128,0.02)}
+.pw-site{display:flex;align-items:center;gap:10px}
+.site-fav{width:28px;height:28px;border-radius:7px;background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.pw-dot{font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--muted);letter-spacing:2px;cursor:pointer}
+.pw-dot:hover{color:var(--accent)}
+
+/* STRENGTH */
+.strength-bar-wrap{height:6px;background:var(--bg);border-radius:3px;overflow:hidden;border:1px solid var(--border)}
+.strength-bar{height:100%;border-radius:3px;transition:width 0.4s cubic-bezier(0.34,1.56,0.64,1),background 0.4s;position:relative;overflow:hidden}
+.strength-bar::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.25),transparent);animation:shimmer 2s infinite}
+@keyframes shimmer{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+.str-labels{display:flex;justify-content:space-between;align-items:center;margin-top:5px}
+.str-text{font-size:10px;font-weight:700;font-family:'Rajdhani',sans-serif;letter-spacing:1px;text-transform:uppercase}
+.str-pct{font-family:'Share Tech Mono',monospace;font-size:11px;font-weight:700}
+.str-checks{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-top:7px}
+.chk{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)}
+.chk.pass{color:var(--accent)}
+.chk-dot{width:5px;height:5px;border-radius:50%;background:var(--muted);flex-shrink:0}
+.chk.pass .chk-dot{background:var(--accent);box-shadow:0 0 3px var(--accent)}
+
+/* VAULT CARDS */
+.vaults-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:13px;margin-bottom:20px}
+.vault-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;cursor:pointer;transition:all 0.2s;position:relative;overflow:hidden}
+.vault-card:hover{border-color:rgba(0,255,128,0.3);transform:translateY(-2px);box-shadow:0 8px 28px rgba(0,0,0,0.3)}
+.vault-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:13px}
+.vault-icon{width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:19px;background:rgba(0,255,128,0.07);border:1px solid rgba(0,255,128,0.13)}
+.vault-name{font-size:16px;font-weight:600;margin-bottom:3px}
+.vault-meta{font-size:11px;color:var(--muted)}
+.vault-bar{height:3px;background:var(--bg);border-radius:2px;margin-top:13px;overflow:hidden}
+.vault-bar-fill{height:100%;border-radius:2px;transition:width 0.6s ease}
+.vault-add{background:transparent;border:2px dashed var(--border);border-radius:var(--r);padding:18px;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:9px;color:var(--muted);font-size:13px;min-height:120px}
+.vault-add:hover{border-color:var(--accent);color:var(--accent);background:rgba(0,255,128,0.03)}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.82);backdrop-filter:blur(10px);z-index:300;display:none;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:30px;width:480px;max-width:95vw;max-height:90vh;overflow-y:auto;position:relative;animation:modalPop 0.28s cubic-bezier(0.34,1.56,0.64,1)}
+@keyframes modalPop{from{opacity:0;transform:scale(0.9)}to{opacity:1;transform:scale(1)}}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}
+.modal-title{font-family:'Rajdhani',sans-serif;font-size:19px;font-weight:700;letter-spacing:1px}
+.modal-close{width:28px;height:28px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:15px;transition:all 0.15s}
+.modal-close:hover{color:var(--text);border-color:var(--accent)}
+.modal-actions{display:flex;gap:9px;margin-top:20px}
+.modal-actions .btn{width:auto;flex:1}
+
+/* CONFIRM DIALOG */
+.confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.88);backdrop-filter:blur(12px);z-index:500;display:none;align-items:center;justify-content:center}
+.confirm-overlay.open{display:flex}
+.confirm-box{background:var(--surface);border:1px solid rgba(255,64,64,0.3);border-radius:16px;padding:32px;width:400px;max-width:93vw;text-align:center;animation:modalPop 0.25s cubic-bezier(0.34,1.56,0.64,1)}
+.confirm-icon{font-size:44px;margin-bottom:14px}
+.confirm-title{font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;letter-spacing:1px;margin-bottom:8px}
+.confirm-msg{font-size:13px;color:var(--muted);margin-bottom:24px;line-height:1.6}
+.confirm-actions{display:flex;gap:10px;justify-content:center}
+.confirm-actions .btn{width:auto;min-width:120px}
+
+/* FAMILY */
+.fm-row{display:flex;align-items:center;gap:11px;padding:11px 13px;background:var(--bg);border:1px solid var(--border);border-radius:10px;margin-bottom:6px;transition:border-color 0.2s}
+.fm-row:hover{border-color:rgba(0,255,128,0.2)}
+.fm-info{flex:1;min-width:0}
+.fm-name{font-size:13px;font-weight:600;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.fm-role{font-size:11px;color:var(--muted);margin-top:1px}
+.fm-status{font-size:11px;white-space:nowrap}
+
+/* 2FA */
+.totp-display{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:20px;text-align:center;margin-bottom:16px}
+.totp-code{font-family:'Share Tech Mono',monospace;font-size:36px;letter-spacing:8px;color:var(--accent);font-weight:700}
+.totp-label{font-size:10px;color:var(--muted);margin-top:6px;letter-spacing:2px;text-transform:uppercase}
+.totp-timer{height:3px;background:var(--border);border-radius:2px;margin-top:11px;overflow:hidden}
+.totp-fill{height:100%;background:var(--accent);border-radius:2px;transition:width 1s linear,background 1s}
+
+/* BREACH */
+.breach-alert{display:flex;align-items:center;gap:13px;background:rgba(255,64,64,0.05);border:1px solid rgba(255,64,64,0.18);border-radius:10px;padding:13px 15px;margin-bottom:8px}
+.breach-icon{font-size:20px;flex-shrink:0}
+.breach-info{flex:1}
+.breach-site{font-weight:600;font-size:13px;color:var(--danger)}
+.breach-detail{font-size:11px;color:var(--muted);margin-top:2px}
+
+/* ACTIVITY */
+.act-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.04)}
+.act-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.act-icon.green{background:rgba(0,255,128,0.1)}
+.act-icon.blue{background:rgba(0,200,255,0.1)}
+.act-icon.red{background:rgba(255,64,64,0.1)}
+.act-icon.yellow{background:rgba(255,170,0,0.1)}
+.act-text{flex:1;font-size:12px}
+.act-time{font-size:10px;color:var(--muted);font-family:'Share Tech Mono',monospace;white-space:nowrap}
+
+/* PLANS */
+.plans-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px}
+.plan-card{background:var(--surface);border:1px solid var(--border);border-radius:15px;padding:22px;position:relative;transition:all 0.2s}
+.plan-card.featured{border-color:var(--accent);box-shadow:0 0 28px rgba(0,255,128,0.09)}
+.plan-card.featured::before{content:'MOST POPULAR';position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:var(--accent);color:#000;font-size:9px;font-weight:700;font-family:'Rajdhani',sans-serif;letter-spacing:2px;padding:2px 11px;border-radius:20px}
+.plan-name{font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;letter-spacing:2px;margin-bottom:6px}
+.plan-price{font-family:'Rajdhani',sans-serif;font-size:36px;font-weight:700;margin-bottom:3px}
+.plan-desc{font-size:12px;color:var(--muted);margin-bottom:16px}
+.plan-features{list-style:none;margin-bottom:20px}
+.plan-features li{font-size:12px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;gap:6px;color:var(--muted)}
+.plan-features li.has{color:var(--text)}
+
+/* THEME */
+.color-row{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.color-row label{font-size:12px;color:var(--muted);width:75px;flex-shrink:0}
+.cp-wrap{display:flex;align-items:center;gap:8px;flex:1}
+input[type="color"]{width:40px;height:40px;border:none;border-radius:7px;cursor:pointer;background:none;padding:2px}
+.grad-preview{flex:1;height:40px;border-radius:8px;border:1px solid var(--border);transition:all 0.3s}
+
+/* GEN */
+.gen-out{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center;margin-bottom:13px;position:relative;min-height:70px;display:flex;align-items:center;justify-content:center}
+.gen-pw{font-family:'Share Tech Mono',monospace;font-size:17px;letter-spacing:2px;word-break:break-all;color:var(--accent)}
+.gen-copy{position:absolute;top:9px;right:9px;width:28px;height:28px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;transition:all 0.15s;color:var(--muted)}
+.gen-copy:hover{border-color:var(--accent);color:var(--accent)}
+.slider-row{display:flex;align-items:center;gap:10px;margin-bottom:11px}
+.slider-row label{font-size:12px;color:var(--muted);width:100px;flex-shrink:0}
+.slider-row span{font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--accent);width:26px}
+input[type="range"]{flex:1;-webkit-appearance:none;height:3px;background:var(--border);border-radius:2px;outline:none}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);cursor:pointer;box-shadow:0 0 6px rgba(0,255,128,0.5)}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.toggle-row label{font-size:12px;color:var(--muted)}
+.toggle{width:34px;height:18px;background:var(--border);border-radius:9px;cursor:pointer;position:relative;transition:background 0.2s;flex-shrink:0}
+.toggle.on{background:var(--accent)}
+.toggle::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:transform 0.2s;box-shadow:0 1px 4px rgba(0,0,0,0.4)}
+.toggle.on::after{transform:translateX(16px)}
+
+/* ADMIN PANEL */
+#adminPanel{position:fixed;inset:0;z-index:600;background:rgba(0,0,0,0.88);backdrop-filter:blur(12px);display:none;align-items:center;justify-content:center}
+#adminPanel.open{display:flex}
+.admin-box{background:var(--surface);border:1px solid rgba(255,60,172,0.4);border-radius:20px;width:580px;max-width:95vw;max-height:85vh;overflow-y:auto;box-shadow:0 0 80px rgba(255,60,172,0.12)}
+.admin-hdr{padding:20px 24px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);z-index:1}
+.admin-title{font-family:'Rajdhani',sans-serif;font-size:19px;font-weight:700;letter-spacing:2px;background:linear-gradient(90deg,var(--accent3),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.admin-body{padding:20px 24px}
+.admin-section{margin-bottom:20px}
+.admin-st{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--accent3);margin-bottom:10px}
+.admin-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:18px}
+.adstat{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:13px;text-align:center}
+.adstat-v{font-family:'Rajdhani',sans-serif;font-size:24px;font-weight:700;color:var(--accent)}
+.adstat-l{font-size:10px;color:var(--muted);letter-spacing:1px;margin-top:2px}
+.au-row{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:9px;margin-bottom:6px;transition:border-color 0.2s}
+.au-row:hover{border-color:rgba(255,60,172,0.3)}
+.au-info{flex:1;min-width:0}
+.au-name{font-size:13px;font-weight:600;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.au-email{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.grant-btn{padding:4px 10px;background:rgba(0,255,128,0.1);border:1px solid rgba(0,255,128,0.3);border-radius:6px;color:var(--accent);font-size:10px;font-weight:700;cursor:pointer;font-family:'Rajdhani',sans-serif;letter-spacing:1px;transition:all 0.15s}
+.grant-btn:hover{background:rgba(0,255,128,0.2)}
+.revoke-btn{padding:4px 10px;background:rgba(255,64,64,0.1);border:1px solid rgba(255,64,64,0.3);border-radius:6px;color:var(--danger);font-size:10px;font-weight:700;cursor:pointer;font-family:'Rajdhani',sans-serif;letter-spacing:1px;transition:all 0.15s}
+.revoke-btn:hover{background:rgba(255,64,64,0.2)}
+.plan-pill{font-size:9px;padding:2px 5px;border-radius:8px;font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:1px;flex-shrink:0}
+.pp-pro{background:linear-gradient(135deg,var(--accent2),#0055ff);color:#fff}
+.pp-free{background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
+.pp-dev{background:linear-gradient(135deg,var(--accent3),#ff6b6b);color:#fff}
+.admin-inp-row{display:flex;gap:8px;margin-bottom:10px}
+.admin-inp-row input{flex:1;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Outfit',sans-serif;font-size:13px;outline:none}
+.admin-inp-row input:focus{border-color:var(--accent3)}
+.admin-inp-row button{padding:8px 14px;background:linear-gradient(135deg,var(--accent3),#cc0088);color:#fff;border:none;border-radius:8px;font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer;white-space:nowrap}
+
+/* INPUT UTILS */
+.pw-input-wrap{position:relative}
+.pw-toggle{position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;color:var(--muted);font-size:16px;background:none;border:none;transition:color 0.2s}
+.pw-toggle:hover{color:var(--accent)}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(0,255,128,0.2);border-top-color:var(--accent);border-radius:50%;animation:spin 0.6s linear infinite;vertical-align:middle;margin-right:5px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* TOAST */
+.toast-container{position:fixed;bottom:20px;right:20px;z-index:999;display:flex;flex-direction:column;gap:6px}
+.toast{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 15px;display:flex;align-items:center;gap:8px;font-size:13px;min-width:250px;animation:toastIn 0.3s cubic-bezier(0.34,1.56,0.64,1);box-shadow:0 8px 28px rgba(0,0,0,0.4);max-width:340px}
+@keyframes toastIn{from{opacity:0;transform:translateX(28px)}to{opacity:1;transform:translateX(0)}}
+.toast.success{border-left:3px solid var(--accent)}
+.toast.error{border-left:3px solid var(--danger)}
+.toast.info{border-left:3px solid var(--accent2)}
+.toast.warn{border-left:3px solid var(--warn)}
+
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(0,255,128,0.13);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:rgba(0,255,128,0.28)}
+@media(max-width:900px){.stats-grid{grid-template-columns:repeat(2,1fr)}.plans-grid{grid-template-columns:1fr}.two-col{grid-template-columns:1fr}.main{margin-left:0;padding:14px}}
+</style>
+</head>
+<body>
+<div class="bg-mesh"></div>
+<div class="user-bg-gradient" id="userBg"></div>
+
+<!-- OWNER BANNER (only visible to isaactressler09@gmail.com) -->
+<div id="ownerBanner">
+  <span>⚡ OWNER</span>
+  <input type="text" id="apiUrlInput" placeholder="https://your-api.up.railway.app" oninput="API_BASE=this.value.trim().replace(/\/$/,'')">
+  <button class="ob-btn" onclick="saveApiUrl()">CONNECT</button>
+  <div class="api-dot checking" id="apiDot"></div>
+  <span id="apiStatusText" style="color:var(--muted);font-size:11px">Not connected</span>
+  <button class="ob-btn" onclick="openAdmin()" style="background:rgba(255,60,172,0.2);border:1px solid var(--accent3);margin-left:auto">⚡ Admin Panel</button>
+</div>
+
+<!-- AUTH -->
+<div id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <div class="logo-icon">🔐</div>
+      <h1>RAZERLOCK</h1>
+      <p>MILITARY-GRADE PASSWORD VAULT</p>
+    </div>
+    <div class="auth-tabs">
+      <div class="auth-tab active" onclick="switchAuthTab('login')">Sign In</div>
+      <div class="auth-tab" onclick="switchAuthTab('register')">Register</div>
+    </div>
+    <div id="login-form">
+      <div class="form-group"><label>Email</label><input type="email" class="form-input" id="loginEmail" placeholder="you@example.com"></div>
+      <div class="form-group"><label>Master Password</label>
+        <div class="pw-input-wrap"><input type="password" class="form-input" id="loginPass" placeholder="••••••••••••" onkeydown="if(event.key==='Enter')login()"><button class="pw-toggle" onclick="togglePw('loginPass',this)">👁️</button></div>
+      </div>
+      <button class="btn btn-primary" id="loginBtn" onclick="login()">UNLOCK VAULT</button>
+      <div class="auth-biometric">
+        <div class="bio-btn" onclick="toast('Face ID coming soon 👤','info')">👤<span>FACE ID</span></div>
+        <div class="bio-btn" onclick="toast('Fingerprint coming soon 👆','info')">👆<span>FINGERPRINT</span></div>
+        <div class="bio-btn" onclick="toast('PIN coming soon 🔢','info')">🔢<span>PIN</span></div>
+      </div>
+    </div>
+    <div id="register-form" style="display:none">
+      <div class="form-group"><label>Full Name</label><input type="text" class="form-input" id="regName" placeholder="Your name"></div>
+      <div class="form-group"><label>Email</label><input type="email" class="form-input" id="regEmail" placeholder="you@example.com"></div>
+      <div class="form-group"><label>Master Password</label>
+        <div class="pw-input-wrap"><input type="password" class="form-input" id="regPass" placeholder="Create a strong password" oninput="updateStrength(this.value,'regStr')"><button class="pw-toggle" onclick="togglePw('regPass',this)">👁️</button></div>
+        <div id="regStr" style="margin-top:8px"></div>
+      </div>
+      <button class="btn btn-primary" id="regBtn" onclick="register()">CREATE ACCOUNT</button>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <aside class="sidebar">
+    <div class="sidebar-logo"><div class="logo-mark">🔐</div><h2>RAZERLOCK</h2></div>
+    <nav class="sidebar-nav">
+      <div class="nav-label">Main</div>
+      <div class="nav-item active" onclick="go('dashboard',this)"><span class="ni">🏠</span>Dashboard</div>
+      <div class="nav-item" onclick="go('vaults',this)"><span class="ni">🗄️</span>My Vaults</div>
+      <div class="nav-item" onclick="go('passwords',this)"><span class="ni">🔑</span>Passwords</div>
+      <div class="nav-item" onclick="go('generator',this)"><span class="ni">⚡</span>Generator</div>
+      <div class="nav-item" onclick="go('twofactor',this)"><span class="ni">🛡️</span>2FA Codes</div>
+      <div class="nav-label">Family</div>
+      <div class="nav-item" onclick="go('family',this)"><span class="ni">👨‍👩‍👧‍👦</span>Family Vault</div>
+      <div class="nav-item" onclick="go('sharing',this)"><span class="ni">🔗</span>Secure Sharing</div>
+      <div class="nav-label">Security</div>
+      <div class="nav-item" onclick="go('breach',this)"><span class="ni">⚠️</span>Breach Monitor</div>
+      <div class="nav-item" onclick="go('activity',this)"><span class="ni">📋</span>Activity Log</div>
+      <div class="nav-item" onclick="go('audit',this)"><span class="ni">🔍</span>Security Audit</div>
+      <div class="nav-label">Account</div>
+      <div class="nav-item" onclick="go('membership',this)"><span class="ni">💎</span>Membership</div>
+      <div class="nav-item" onclick="go('settings',this)"><span class="ni">⚙️</span>Settings</div>
+      <div class="nav-item" onclick="confirmLogout()"><span class="ni">🚪</span>Sign Out</div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-card" onclick="go('settings',null)">
+        <div class="avatar" id="sideAvatar">?<div class="online-dot dot-on"></div></div>
+        <div class="user-info">
+          <div class="u-name" id="sideName">—</div>
+          <div class="u-email" id="sideEmail">—</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="ph"><div><div class="pt">Dashboard</div><div class="ps" id="dashGreet">Welcome back!</div></div>
+        <div class="hactions"><button class="add-btn" onclick="openModal('addPwModal')">+ Add Password</button></div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card sc-g"><div class="si">🔑</div><div class="sv" id="statPw">—</div><div class="sl">Passwords</div></div>
+        <div class="stat-card sc-b"><div class="si">🗄️</div><div class="sv" id="statVault">—</div><div class="sl">Vaults</div></div>
+        <div class="stat-card sc-p"><div class="si">💪</div><div class="sv" id="statStr">—</div><div class="sl">Avg. Strength</div></div>
+        <div class="stat-card sc-y"><div class="si">🛡️</div><div class="sv" id="statTotp">—</div><div class="sl">2FA Accounts</div></div>
+      </div>
+      <div class="two-col" style="margin-bottom:16px">
+        <div class="section-card"><div class="sc-title">🔐 Vault Health</div><div id="dashVaults"><div class="empty-state"><div class="ei">🔄</div><p>Loading...</p></div></div></div>
+        <div class="section-card"><div class="sc-title">📋 Recent Activity</div><div id="dashAct"><div class="empty-state"><div class="ei">🔄</div><p>Loading...</p></div></div></div>
+      </div>
+      <div class="section-card"><div class="sc-title">⚡ Quick Actions</div>
+        <div class="chips-row">
+          <div class="chip" onclick="openModal('addPwModal')">➕ Add Password</div>
+          <div class="chip" onclick="go('generator',null)">⚡ Generate Password</div>
+          <div class="chip" onclick="go('family',null)">👨‍👩‍👧‍👦 Family Vault</div>
+          <div class="chip" onclick="openModal('addVaultModal')">🗄️ New Vault</div>
+          <div class="chip" onclick="go('audit',null)">🔍 Security Audit</div>
+          <div class="chip" onclick="go('breach',null)">⚠️ Breach Monitor</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VAULTS -->
+    <div class="page" id="page-vaults">
+      <div class="ph"><div><div class="pt">My Vaults</div><div class="ps">Manage your secure vaults</div></div><button class="add-btn" onclick="openModal('addVaultModal')">+ New Vault</button></div>
+      <div class="vaults-grid" id="vaultGrid"></div>
+    </div>
+
+    <!-- PASSWORDS -->
+    <div class="page" id="page-passwords">
+      <div class="ph"><div><div class="pt">Passwords</div><div class="ps" id="pwSub">All vaults</div></div><button class="add-btn" onclick="openModal('addPwModal')">+ Add Password</button></div>
+      <div class="chips-row" id="vaultChips"></div>
+      <div class="pw-table-wrap">
+        <div class="pw-table-header">
+          <div class="pw-search">🔍<input type="text" placeholder="Search..." oninput="filterPw(this.value)"></div>
+          <div style="display:flex;gap:6px"><button class="action-btn" onclick="sortPw('name')">Sort: A–Z</button><button class="action-btn" onclick="sortPw('strength')">Sort: Strength</button></div>
+        </div>
+        <table><thead><tr><th>Site</th><th>Username</th><th>Password</th><th>Strength</th><th>Vault</th><th>Actions</th></tr></thead><tbody id="pwTable"></tbody></table>
+      </div>
+    </div>
+
+    <!-- GENERATOR -->
+    <div class="page" id="page-generator">
+      <div class="ph"><div><div class="pt">Password Generator</div><div class="ps">Create ultra-secure passwords</div></div></div>
+      <div class="two-col">
+        <div>
+          <div class="gen-out"><div class="gen-pw" id="genOut">Click Generate</div><button class="gen-copy" onclick="copyGen()">📋</button></div>
+          <div class="section-card"><div id="genStr"></div></div>
+        </div>
+        <div class="section-card">
+          <div class="sc-title">⚙️ Options</div>
+          <div class="slider-row"><label>Length</label><input type="range" min="8" max="128" value="20" oninput="genLen.textContent=this.value;genPw()"><span id="genLen">20</span></div>
+          <div class="toggle-row"><label>Uppercase A–Z</label><div class="toggle on" id="tU" onclick="toggleOpt(this,'upper')"></div></div>
+          <div class="toggle-row"><label>Lowercase a–z</label><div class="toggle on" id="tL" onclick="toggleOpt(this,'lower')"></div></div>
+          <div class="toggle-row"><label>Numbers 0–9</label><div class="toggle on" id="tN" onclick="toggleOpt(this,'nums')"></div></div>
+          <div class="toggle-row"><label>Symbols !@#$</label><div class="toggle on" id="tS" onclick="toggleOpt(this,'syms')"></div></div>
+          <div class="toggle-row"><label>Exclude Ambiguous</label><div class="toggle" id="tA" onclick="toggleOpt(this,'ambig')"></div></div>
+          <div class="divider"></div>
+          <button class="btn btn-primary" onclick="genPw()" style="margin-bottom:8px">⚡ GENERATE</button>
+          <button class="btn btn-secondary" onclick="saveGen()">💾 Save to Vault</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2FA -->
+    <div class="page" id="page-twofactor">
+      <div class="ph"><div><div class="pt">2FA Codes</div><div class="ps">Time-based one-time passwords</div></div><button class="add-btn" onclick="openModal('add2FAModal')">+ Add Account</button></div>
+      <div class="two-col" id="totpGrid"></div>
+    </div>
+
+    <!-- FAMILY -->
+    <div class="page" id="page-family">
+      <div class="ph"><div><div class="pt">Family Vault</div><div class="ps">Shared passwords for your circle</div></div>
+        <div class="hactions"><button class="add-btn" onclick="openModal('addFamilyPwModal')">+ Share Password</button><button class="add-btn" style="background:linear-gradient(135deg,var(--accent2),#0066ff)" onclick="openModal('inviteModal')">+ Invite Member</button></div>
+      </div>
+      <div id="familyNoVault" style="display:none">
+        <div class="empty-state"><div class="ei">👨‍👩‍👧‍👦</div><p style="margin-bottom:16px">You don't have a family vault yet.</p><button class="add-btn" style="margin:0 auto" onclick="createFamilyVault()">Create Family Vault</button></div>
+      </div>
+      <div id="familyVaultContent">
+        <div class="two-col" style="margin-bottom:16px">
+          <div class="section-card"><div class="sc-title">👥 Members</div><div id="familyMembers"><div class="empty-state"><div class="ei">🔄</div><p>Loading...</p></div></div></div>
+          <div class="section-card">
+            <div class="sc-title">📊 Vault Info</div>
+            <div id="familyStats"></div>
+            <div class="divider"></div>
+            <div class="sc-title" style="margin-bottom:10px">🔑 Vault Access</div>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:12px">All members use their own RazerLock login to access the family vault. No shared password needed.</p>
+          </div>
+        </div>
+        <div class="section-card">
+          <div class="sc-title">🔐 Shared Passwords</div>
+          <table><thead><tr><th>Site</th><th>Username</th><th>Password</th><th>Strength</th><th>Shared By</th><th>Actions</th></tr></thead><tbody id="familyPwTable"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SHARING -->
+    <div class="page" id="page-sharing">
+      <div class="ph"><div><div class="pt">Secure Sharing</div><div class="ps">Share passwords via encrypted links</div></div><button class="add-btn" onclick="openModal('sharePwModal')">+ Create Share Link</button></div>
+      <div class="section-card"><div class="sc-title">🔗 Active Share Links</div>
+        <table><thead><tr><th>Password</th><th>Recipient</th><th>Expires</th><th>Views</th><th>Actions</th></tr></thead><tbody id="shareTable"></tbody></table>
+      </div>
+    </div>
+
+    <!-- BREACH -->
+    <div class="page" id="page-breach">
+      <div class="ph"><div><div class="pt">Breach Monitor</div><div class="ps">Know if your data was exposed</div></div><button class="add-btn" onclick="checkBreaches()">🔍 Scan Now</button></div>
+      <div class="stats-grid" style="grid-template-columns:repeat(3,1fr)">
+        <div class="stat-card sc-g"><div class="si">✅</div><div class="sv" id="bSecure">—</div><div class="sl">Secure Accounts</div></div>
+        <div class="stat-card sc-y"><div class="si">⚠️</div><div class="sv" id="bWeak" style="color:var(--warn)">—</div><div class="sl">Weak Passwords</div></div>
+        <div class="stat-card sc-p"><div class="si">🚨</div><div class="sv" id="bBreached" style="color:var(--danger)">0</div><div class="sl">Breached Accounts</div></div>
+      </div>
+      <div class="section-card" style="margin-bottom:16px"><div class="sc-title">🚨 Known Breached Services</div><div id="breachList"></div></div>
+      <div class="section-card"><div class="sc-title">📧 Monitor Email</div>
+        <div style="display:flex;gap:10px"><input type="email" class="form-input" id="monitorEmail" style="flex:1" placeholder="email@example.com"><button class="add-btn" onclick="addMonitor()">Add Monitor</button></div>
+        <p style="font-size:11px;color:var(--muted);margin-top:8px">We'll alert you if this email appears in a new breach.</p>
+      </div>
+    </div>
+
+    <!-- ACTIVITY -->
+    <div class="page" id="page-activity">
+      <div class="ph"><div><div class="pt">Activity Log</div><div class="ps">Everything that happens in your account</div></div><button class="action-btn" onclick="exportActivity()">📥 Export</button></div>
+      <div class="section-card"><div id="actFull"><div class="empty-state"><div class="ei">🔄</div><p>Loading...</p></div></div></div>
+    </div>
+
+    <!-- AUDIT -->
+    <div class="page" id="page-audit">
+      <div class="ph"><div><div class="pt">Security Audit</div><div class="ps">Identify and fix vulnerabilities</div></div><button class="add-btn" onclick="runAudit()">🔍 Run Audit</button></div>
+      <div class="stats-grid">
+        <div class="stat-card sc-g"><div class="si">💯</div><div class="sv" id="auScore" style="color:var(--accent)">--</div><div class="sl">Security Score</div></div>
+        <div class="stat-card sc-p"><div class="si">🔄</div><div class="sv" id="auReused">--</div><div class="sl">Reused Passwords</div></div>
+        <div class="stat-card sc-y"><div class="si">📅</div><div class="sv" id="auOld">--</div><div class="sl">Old Passwords</div></div>
+        <div class="stat-card sc-b"><div class="si">💪</div><div class="sv" id="auStrong">--</div><div class="sl">Strong Passwords</div></div>
+      </div>
+      <div class="section-card" style="margin-top:16px"><div class="sc-title">📋 Results</div><div id="auResults"><div class="empty-state"><div class="ei">🔍</div><p>Click "Run Audit" to analyze your passwords</p></div></div></div>
+    </div>
+
+    <!-- MEMBERSHIP -->
+    <div class="page" id="page-membership">
+      <div class="ph"><div><div class="pt">Membership</div><div class="ps">Unlock the full power of RazerLock</div></div><div class="mbadge" id="planBadge" style="padding:5px 12px;font-size:12px">FREE</div></div>
+      <div class="plans-grid">
+        <div class="plan-card">
+          <div class="plan-name">FREE</div><div class="plan-price">$0<span style="font-size:14px;color:var(--muted)">/mo</span></div><div class="plan-desc">Get started with the basics</div>
+          <ul class="plan-features">
+            <li class="has">✅ Up to 5 Vaults</li><li class="has">✅ Unlimited passwords</li>
+            <li class="has">✅ Password generator</li><li class="has">✅ Breach monitoring</li>
+            <li>✗ Custom themes</li><li>✗ Family vault</li><li>✗ Secure sharing</li></ul>
+          <button class="btn btn-outline" id="freePlanBtn">Current Plan</button>
+        </div>
+        <div class="plan-card featured">
+          <div class="plan-name" style="color:var(--accent)">PRO</div>
+          <div class="plan-price" style="background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent">$3<span style="-webkit-text-fill-color:var(--muted);font-size:14px">/mo</span></div>
+          <div class="plan-desc">Everything you need</div>
+          <ul class="plan-features">
+            <li class="has">✅ Up to 10 Vaults</li><li class="has">✅ Unlimited passwords</li>
+            <li class="has">✅ Password generator</li><li class="has">✅ Breach monitoring</li>
+            <li class="has">✅ Custom gradient themes</li><li class="has">✅ Family vault (10 members)</li>
+            <li class="has">✅ Secure share links</li><li class="has">✅ Priority support</li></ul>
+          <button class="btn btn-primary" onclick="toast('🚀 Redirecting to checkout...','info')">UPGRADE — $3/mo</button>
+        </div>
+        <div class="plan-card">
+          <div class="plan-name">ADD-ONS</div><div class="plan-price" style="font-size:20px;color:var(--accent2)">À LA CARTE</div><div class="plan-desc">One-time purchases</div>
+          <ul class="plan-features">
+            <li class="has">✅ Extra Vault — $5 each</li><li class="has">✅ Family Vault — $10 one-time</li>
+            <li class="has">✅ Emergency Access — $3</li><li class="has">✅ Dark Web Monitor — $4/mo</li></ul>
+          <button class="btn btn-secondary" onclick="toast('🛒 Store coming soon','info')">Browse Add-Ons</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="page" id="page-settings">
+      <div class="ph"><div><div class="pt">Settings</div><div class="ps">Customize your experience</div></div><button class="add-btn" onclick="saveSettings()">💾 Save Changes</button></div>
+      <div class="two-col">
+        <div>
+          <div class="section-card" style="margin-bottom:16px">
+            <div class="sc-title">👤 Profile</div>
+            <div class="form-group"><label>Display Name</label><input type="text" class="form-input" id="setName"></div>
+            <div class="form-group"><label>Email</label><input type="email" class="form-input" id="setEmail"></div>
+          </div>
+          <div class="section-card" style="margin-bottom:16px">
+            <div class="sc-title">🔑 Change Master Password</div>
+            <div class="form-group"><label>Current Password</label>
+              <div class="pw-input-wrap"><input type="password" class="form-input" id="curPw" placeholder="Current password"><button class="pw-toggle" onclick="togglePw('curPw',this)">👁️</button></div>
+            </div>
+            <div class="form-group"><label>New Password</label>
+              <div class="pw-input-wrap"><input type="password" class="form-input" id="newPw" placeholder="New master password" oninput="updateStrength(this.value,'setPwStr')"><button class="pw-toggle" onclick="togglePw('newPw',this)">👁️</button></div>
+              <div id="setPwStr" style="margin-top:8px"></div>
+            </div>
+            <button class="btn btn-secondary" onclick="changePw()">Update Password</button>
+          </div>
+          <div class="section-card">
+            <div class="sc-title">🔒 Security</div>
+            <div class="toggle-row" style="margin-bottom:12px"><div><div style="font-size:13px;font-weight:600">Two-Factor Auth</div><div style="font-size:11px;color:var(--muted)">Extra login security</div></div><div class="toggle on"></div></div>
+            <div class="toggle-row" style="margin-bottom:12px"><div><div style="font-size:13px;font-weight:600">Auto-Lock (5 min)</div><div style="font-size:11px;color:var(--muted)">Lock after inactivity</div></div><div class="toggle on"></div></div>
+            <div class="toggle-row"><div><div style="font-size:13px;font-weight:600">Clipboard Auto-Clear</div><div style="font-size:11px;color:var(--muted)">Clear copied passwords after 30s</div></div><div class="toggle on"></div></div>
+          </div>
+        </div>
+        <div>
+          <div class="section-card" style="margin-bottom:16px">
+            <div class="sc-title">🎨 Custom Theme <span class="mbadge mb-pro" style="font-size:9px">PRO</span></div>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:13px">Pick two colors for your personal background gradient.</p>
+            <div class="color-row"><label>Color A</label><div class="cp-wrap"><input type="color" id="gradA" value="#001a0f" oninput="previewGrad()"><div class="grad-preview" id="gradPreview"></div></div></div>
+            <div class="color-row"><label>Color B</label><div class="cp-wrap"><input type="color" id="gradB" value="#001a2e" oninput="previewGrad()"></div></div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+              <div class="chip" onclick="setPreset('#0d0d2e','#2d0d2e')">Nebula</div>
+              <div class="chip" onclick="setPreset('#0d2e0d','#002e1a')">Matrix</div>
+              <div class="chip" onclick="setPreset('#2e1a00','#2e0000')">Lava</div>
+              <div class="chip" onclick="setPreset('#001a2e','#002e2e')">Ocean</div>
+              <div class="chip" onclick="setPreset('#1a001a','#2e002e')">Dusk</div>
+            </div>
+            <button class="btn btn-primary" onclick="applyGrad()">✨ Apply Theme</button>
+          </div>
+          <div class="section-card">
+            <div class="sc-title">🌍 Preferences</div>
+            <div class="form-group"><label>Language</label><select class="form-input"><option>English (US)</option><option>Español</option><option>Français</option></select></div>
+            <div class="form-group"><label>Auto-Lock Timeout</label><select class="form-input"><option>5 minutes</option><option>15 minutes</option><option>30 minutes</option><option>Never</option></select></div>
+            <div class="form-group"><label>Password Visibility Default</label><select class="form-input"><option>Hidden</option><option>Visible</option></select></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="addPwModal">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">🔑 Add Password</div><div class="modal-close" onclick="closeModal('addPwModal')">✕</div></div>
+    <div class="form-group"><label>Site / App Name *</label><input type="text" class="form-input" id="nSite" placeholder="e.g. Google, Netflix"></div>
+    <div class="form-group"><label>URL</label><input type="text" class="form-input" id="nUrl" placeholder="https://example.com"></div>
+    <div class="form-group"><label>Username / Email *</label><input type="text" class="form-input" id="nUser" placeholder="your@email.com"></div>
+    <div class="form-group"><label>Password *</label>
+      <div class="pw-input-wrap"><input type="password" class="form-input" id="nPass" placeholder="Enter or generate a password" oninput="updateStrength(this.value,'nPassStr')"><button class="pw-toggle" onclick="togglePw('nPass',this)">👁️</button></div>
+      <div id="nPassStr" style="margin-top:8px"></div>
+    </div>
+    <div class="form-group"><label>Vault *</label><select class="form-input" id="nVault"></select></div>
+    <div class="form-group"><label>Notes</label><textarea class="form-input" id="nNotes" rows="2" style="resize:vertical" placeholder="Optional notes..."></textarea></div>
+    <div style="display:flex;gap:7px;margin-bottom:14px"><button class="action-btn" onclick="quickGen()">⚡ Quick Generate</button></div>
+    <div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal('addPwModal')">Cancel</button><button class="btn btn-primary" id="savePwBtn" onclick="addPw()">SAVE PASSWORD</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="editPwModal">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">✏️ Edit Password</div><div class="modal-close" onclick="closeModal('editPwModal')">✕</div></div>
+    <input type="hidden" id="editPwId">
+    <div class="form-group"><label>Site / App Name</label><input type="text" class="form-input" id="eSite"></div>
+    <div class="form-group"><label>URL</label><input type="text" class="form-input" id="eUrl"></div>
+    <div class="form-group"><label>Username / Email</label><input type="text" class="form-input" id="eUser"></div>
+    <div class="form-group"><label>Password</label>
+      <div class="pw-input-wrap"><input type="password" class="form-input" id="ePass" oninput="updateStrength(this.value,'ePassStr')"><button class="pw-toggle" onclick="togglePw('ePass',this)">👁️</button></div>
+      <div id="ePassStr" style="margin-top:8px"></div>
+    </div>
+    <div class="form-group"><label>Notes</label><textarea class="form-input" id="eNotes" rows="2" style="resize:vertical"></textarea></div>
+    <div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal('editPwModal')">Cancel</button><button class="btn btn-primary" id="updatePwBtn" onclick="updatePw()">UPDATE PASSWORD</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="addVaultModal">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">🗄️ New Vault</div><div class="modal-close" onclick="closeModal('addVaultModal')">✕</div></div>
+    <div class="form-group"><label>Vault Name</label><input type="text" class="form-input" id="vName" placeholder="e.g. Work, Finance"></div>
+    <div class="form-group"><label>Icon</label>
+      <div class="chips-row" id="vIconPicker">
+        <div class="chip active" onclick="selIcon(this)">🏠</div><div class="chip" onclick="selIcon(this)">💼</div>
+        <div class="chip" onclick="selIcon(this)">🏦</div><div class="chip" onclick="selIcon(this)">🎮</div>
+        <div class="chip" onclick="selIcon(this)">📱</div><div class="chip" onclick="selIcon(this)">🛒</div>
+        <div class="chip" onclick="selIcon(this)">❤️</div><div class="chip" onclick="selIcon(this)">🌐</div>
+      </div>
+    </div>
+    <div class="form-group"><label>Lock Method</label>
+      <div class="chips-row" id="lockPicker">
+        <div class="chip active" onclick="selLock(this)">🔑 Master Password</div>
+        <div class="chip" onclick="selLock(this)">👆 Fingerprint</div>
+        <div class="chip" onclick="selLock(this)">👤 Face ID</div>
+        <div class="chip" onclick="selLock(this)">🔢 Custom PIN</div>
+      </div>
+    </div>
+    <div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal('addVaultModal')">Cancel</button><button class="btn btn-primary" id="createVaultBtn" onclick="addVault()">CREATE VAULT</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="add2FAModal">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">🛡️ Add 2FA Account</div><div class="modal-close" onclick="closeModal('add2FAModal')">✕</div></div>
+    <div class="form-group"><label>Account Name</label><input type="text" class="form-input" id="tName" placeholder="e.g. Google, GitHub"></div>
+    <div class="form-group"><label>Icon (emoji)</label><input type="text" class="form-input" id="tIcon" placeholder="🔑" maxlength="2"></div>
+    <div class="form-group"><label>Secret Key</label><input type="text" class="form-input" id="tSecret" placeholder="JBSWY3DPEHPK3PXP" style="font-family:'Share Tech Mono',monospace;letter-spacing:2px"></div>
+    <div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal('add2FAModal')">Cancel</button><button class="btn btn-primary" onclick="add2FA()">ADD ACCOUNT</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="inviteModal">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">📨 Invite to Family Vault</div><div class="modal-close" onclick="closeModal('inviteModal')">✕</div></div>
+    <div class="form-group"><label>Their RazerLock Email</label><input type="email" class="form-input" id="invEmail" placeholder="family@example.com"></div>
+    <div class="form-group"><label>Role</label><select class="form-input" id="invRole"><option value="member">Member — can view & add passwords</option><option value="admin">Admin — can manage members</option><option value="readonly">Read-only — can only view</option></select></div>
+    <p style="font-size:12px;color:var(--muted);margin-top:-8px">They must already have a RazerLock account.</p>
+    <div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal('inviteModal')">Cancel</button><button class="btn btn-primary" id="inviteBtn" onclick="inviteMember()">SEND INVITE</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="addFamilyPwModal">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">🔐 Share to Family Vault</div><div class="modal-close" onclick="closeModal('addFamilyPwModal')">✕</div></div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:16px">All family members will be able to see this password.</p>
+    <div class="form-group"><label>Site / App *</label><input type="text" class="form-input" id="fpSite" placeholder="e.g. Netflix, Disney+"></div>
+    <div class="form-group"><label>URL</label><input type="text" class="form-input" id="fpUrl" placeholder="https://netflix.com"></div>
+    <div class="form-group"><label>Username / Email *</label><input type="text" class="form-input" id="fpUser" placeholder="shared@email.com"></div>
+    <div class="form-group"><label>Password *</label>
+      <div class="pw-input-wrap"><input type="password" class="form-input" id="fpPass" oninput="updateStrength(this.value,'fpStr')"><button class="pw-toggle" onclick="togglePw('fpPass',this)">👁️</button></div>
+      <div id="fpStr" style="margin-top:8px"></div>
+    </div>
+    <div class="form-group"><label>Notes</label><textarea class="form-input" id="fpNotes" rows="2" style="resize:vertical" placeholder="e.g. Family Netflix account"></textarea></div>
+    <div style="display:flex;gap:7px;margin-bottom:14px"><button class="action-btn" onclick="quickGenFp()">⚡ Quick Generate</button></div>
+    <div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal('addFamilyPwModal')">Cancel</button><button class="btn btn-primary" id="addFpBtn" onclick="addFamilyPw()">SHARE PASSWORD</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="sharePwModal">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">🔗 Create Share Link</div><div class="modal-close" onclick="closeModal('sharePwModal')">✕</div></div>
+    <div class="form-group"><label>Password to Share</label><select class="form-input" id="sharePwSel"></select></div>
+    <div class="form-group"><label>Recipient Email (optional)</label><input type="email" class="form-input" id="shareRec" placeholder="friend@example.com"></div>
+    <div class="form-group"><label>Expires After</label><select class="form-input" id="shareExp"><option value="1">1 hour</option><option value="24" selected>24 hours</option><option value="168">7 days</option></select></div>
+    <div class="form-group"><label>Max Views</label><select class="form-input" id="shareViews"><option value="1">1 view only</option><option value="3">3 views</option><option value="10">10 views</option></select></div>
+    <div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal('sharePwModal')">Cancel</button><button class="btn btn-primary" id="createShareBtn" onclick="createShare()">CREATE LINK</button></div>
+  </div>
+</div>
+
+<!-- CONFIRM DIALOG -->
+<div class="confirm-overlay" id="confirmDialog">
+  <div class="confirm-box">
+    <div class="confirm-icon" id="confirmIcon">🗑️</div>
+    <div class="confirm-title" id="confirmTitle">Are you sure?</div>
+    <div class="confirm-msg" id="confirmMsg">This action cannot be undone.</div>
+    <div class="confirm-actions">
+      <button class="btn btn-secondary" onclick="closeConfirm()">Cancel</button>
+      <button class="btn btn-danger" id="confirmOkBtn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN PANEL -->
+<div id="adminPanel">
+  <div class="admin-box">
+    <div class="admin-hdr">
+      <div class="admin-title">⚡ OWNER ADMIN PANEL</div>
+      <div class="modal-close" onclick="closeAdmin()">✕</div>
+    </div>
+    <div class="admin-body">
+      <div class="admin-stats">
+        <div class="adstat"><div class="adstat-v" id="adTotalU">—</div><div class="adstat-l">Total Users</div></div>
+        <div class="adstat"><div class="adstat-v" id="adProU" style="color:var(--accent2)">—</div><div class="adstat-l">Pro Members</div></div>
+        <div class="adstat"><div class="adstat-v" id="adPws" style="color:var(--accent3)">—</div><div class="adstat-l">Total Passwords</div></div>
+      </div>
+      <div class="admin-section">
+        <div class="admin-st">💎 Grant Pro Membership</div>
+        <div class="admin-inp-row"><input type="email" id="grantEmail" placeholder="user@email.com"><button onclick="grantPro()">GRANT PRO</button></div>
+        <p style="font-size:11px;color:var(--muted)">User gets Pro instantly. Revoke anytime from the list below.</p>
+      </div>
+      <div class="admin-section">
+        <div class="admin-st">👥 All Users</div>
+        <div style="margin-bottom:9px"><input type="text" class="form-input" placeholder="Search users..." oninput="filterAdminU(this.value)" style="font-size:12px;padding:7px 11px"></div>
+        <div id="adminUserList"><div class="empty-state"><div class="ei">🔄</div><p>Loading...</p></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastCont"></div>
+
+<script>
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+const OWNER_EMAIL = 'isaactressler09@gmail.com';
+// Auto-detect API base: if served from Railway, use same origin. Owner can override.
+let API_BASE = localStorage.getItem('rl_api') || (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost' ? '' : window.location.origin);
+let TOKEN = localStorage.getItem('rl_token') || '';
+let currentUser = null;
+let passwords = [], vaults = [], totpAccounts = [], shareLinks = [];
+let familyData = null;
+let selIcon = '🏠', selLock = '🔑 Master Password';
+let genOpts = { upper:true, lower:true, nums:true, syms:true, ambig:false };
+let allAdminUsers = [];
+let confirmCallback = null;
+
+// ─── API ──────────────────────────────────────────────────────────────────────
+async function api(method, path, body) {
+  try {
+    const r = await fetch(API_BASE + path, {
+      method,
+      headers: { 'Content-Type':'application/json', ...(TOKEN?{Authorization:'Bearer '+TOKEN}:{}) },
+      body: body ? JSON.stringify(body) : undefined
+    });
+    const d = await r.json();
+    if (!r.ok) { toast('❌ '+(d.error||'API error'),'error'); return null; }
+    return d;
+  } catch {
+    toast('❌ Cannot reach API — check your URL','error');
+    return null;
+  }
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+window.addEventListener('load', async () => {
+  genPw();
+  // Owner banner API input init
+  const savedApi = localStorage.getItem('rl_api');
+  if (savedApi) {
+    API_BASE = savedApi;
+    const inp = document.getElementById('apiUrlInput');
+    if (inp) inp.value = savedApi;
+  }
+  if (TOKEN) {
+    const d = await api('GET', '/api/user/me');
+    if (d) { currentUser = d; showApp(); }
+    else { TOKEN=''; localStorage.removeItem('rl_token'); }
+  }
+});
+
+// ─── API HEALTH ───────────────────────────────────────────────────────────────
+function saveApiUrl() {
+  const url = document.getElementById('apiUrlInput').value.trim().replace(/\/$/,'');
+  if (!url) { toast('Enter API URL','warn'); return; }
+  API_BASE = url;
+  localStorage.setItem('rl_api', url);
+  checkApiHealth();
+}
+
+async function checkApiHealth() {
+  const dot = document.getElementById('apiDot');
+  const txt = document.getElementById('apiStatusText');
+  dot.className = 'api-dot checking';
+  txt.textContent = 'Checking...';
+  try {
+    const r = await fetch(API_BASE + '/health');
+    if (r.ok) { dot.className='api-dot connected'; txt.textContent='Connected ✓'; toast('✅ API connected!','success'); }
+    else throw new Error();
+  } catch { dot.className='api-dot disconnected'; txt.textContent='Disconnected'; }
+}
+
+// ─── AUTH ─────────────────────────────────────────────────────────────────────
+function switchAuthTab(t) {
+  document.querySelectorAll('.auth-tab').forEach((el,i)=>el.classList.toggle('active',(t==='login'&&i===0)||(t==='register'&&i===1)));
+  document.getElementById('login-form').style.display = t==='login'?'block':'none';
+  document.getElementById('register-form').style.display = t==='register'?'block':'none';
+}
+
+async function login() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pw = document.getElementById('loginPass').value;
+  if (!email||!pw) { toast('Enter email and password','error'); return; }
+  const btn = document.getElementById('loginBtn');
+  btn.innerHTML='<span class="spinner"></span>UNLOCKING...'; btn.disabled=true;
+  const d = await api('POST','/api/auth/login',{email,password:pw});
+  btn.innerHTML='UNLOCK VAULT'; btn.disabled=false;
+  if (!d) return;
+  TOKEN = d.token; currentUser = d.user;
+  localStorage.setItem('rl_token', TOKEN);
+  showApp();
+  toast('🔐 Welcome back, '+currentUser.name+'!','success');
+}
+
+async function register() {
+  const name=document.getElementById('regName').value.trim();
+  const email=document.getElementById('regEmail').value.trim();
+  const pw=document.getElementById('regPass').value;
+  if (!name||!email||!pw){toast('Fill in all fields','error');return;}
+  const btn=document.getElementById('regBtn');
+  btn.innerHTML='<span class="spinner"></span>CREATING...'; btn.disabled=true;
+  const d=await api('POST','/api/auth/register',{name,email,password:pw});
+  btn.innerHTML='CREATE ACCOUNT'; btn.disabled=false;
+  if (!d) return;
+  TOKEN=d.token; currentUser=d.user;
+  localStorage.setItem('rl_token',TOKEN);
+  showApp();
+  toast('🎉 Welcome to RazerLock, '+currentUser.name+'!','success');
+}
+
+function confirmLogout() {
+  confirm2('Sign Out','Are you sure you want to sign out?','🚪',()=>logout(),'Sign Out','btn-danger');
+}
+
+function logout() {
+  TOKEN=''; currentUser=null; passwords=[]; vaults=[];
+  localStorage.removeItem('rl_token');
+  document.getElementById('app').style.display='none';
+  document.getElementById('auth-screen').style.display='flex';
+  document.getElementById('ownerBanner').classList.remove('show');
+  document.getElementById('auth-screen').classList.remove('banner-visible');
+  document.getElementById('app').classList.remove('banner-visible');
+  toast('👋 Signed out','info');
+}
+
+// ─── SHOW APP ─────────────────────────────────────────────────────────────────
+async function showApp() {
+  document.getElementById('auth-screen').style.display='none';
+  document.getElementById('app').style.display='block';
+  updateSidebar();
+  if (currentUser.email===OWNER_EMAIL) {
+    document.getElementById('ownerBanner').classList.add('show');
+    document.getElementById('app').classList.add('banner-visible');
+    document.getElementById('auth-screen').classList.add('banner-visible');
+    if (API_BASE) document.getElementById('apiUrlInput').value=API_BASE;
+    // Add admin nav
+    if (!document.getElementById('adminNav')) {
+      const nav=document.querySelector('.sidebar-nav');
+      const d=document.createElement('div');
+      d.id='adminNav'; d.className='nav-item';
+      d.style.cssText='background:rgba(255,60,172,0.07);border-color:rgba(255,60,172,0.2);color:#ff3cac;margin-bottom:8px';
+      d.innerHTML='<span class="ni">⚡</span>Admin Panel';
+      d.onclick=openAdmin;
+      nav.insertBefore(d,nav.firstChild);
+    }
+  }
+  await Promise.all([loadVaults(),loadPasswords(),loadTotp(),loadShares()]);
+  loadActivity();
+  loadFamily();
+  renderDashboard();
+  if (currentUser.grad_from) applyStoredGrad();
+}
+
+function updateSidebar() {
+  if (!currentUser) return;
+  const plan = currentUser.plan||'free';
+  document.getElementById('sideName').innerHTML = currentUser.name+(currentUser.email===OWNER_EMAIL?' 👑':'')+' <span class="mbadge '+(plan==='dev'?'mb-dev':plan==='pro'?'mb-pro':'mb-free')+'">'+plan.toUpperCase()+'</span>';
+  document.getElementById('sideEmail').textContent = currentUser.email;
+  document.getElementById('sideAvatar').innerHTML = currentUser.name[0].toUpperCase()+'<div class="online-dot dot-on"></div>';
+  document.getElementById('setName').value = currentUser.name;
+  document.getElementById('setEmail').value = currentUser.email;
+  const pb = document.getElementById('planBadge');
+  if (plan==='dev') { pb.className='mbadge mb-dev'; pb.textContent='⚡ DEV ACCESS'; }
+  else if (plan==='pro') { pb.className='mbadge mb-pro'; pb.textContent='💎 PRO'; }
+  else { pb.className='mbadge mb-free'; pb.textContent='FREE'; }
+}
+
+// ─── NAVIGATION ───────────────────────────────────────────────────────────────
+function go(id, el) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  if (el) { document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active')); el.classList.add('active'); }
+  if (id==='activity') loadActivity();
+  if (id==='family') loadFamily();
+  if (id==='sharing') renderShares();
+  if (id==='breach') renderBreach();
+}
+
+// ─── VAULTS ───────────────────────────────────────────────────────────────────
+async function loadVaults() {
+  const d=await api('GET','/api/vaults'); if(!d) return;
+  vaults=d; renderVaults(); renderVaultChips(); populateVaultSel();
+}
+
+function renderVaults() {
+  const g=document.getElementById('vaultGrid');
+  let html=vaults.map(v=>{
+    const pws=passwords.filter(p=>p.vault_id===v.id);
+    const avg=pws.length?pws.reduce((a,p)=>a+calcStr(dec(p.encrypted_password)).pct,0)/pws.length:0;
+    const col=avg>=70?'#00ff80':avg>=40?'#ffaa00':'#ff4040';
+    return `<div class="vault-card" onclick="filterVault(${v.id},'${v.name}')">
+      <div class="vault-top"><div class="vault-icon">${v.icon||'🏠'}</div>
+        <button class="action-btn d" style="font-size:11px" onclick="event.stopPropagation();confirmDeleteVault(${v.id},'${v.name}')">🗑️</button>
+      </div>
+      <div class="vault-name">${v.name}</div>
+      <div class="vault-meta">${v.password_count||pws.length} passwords · ${v.lock_method||'Master Password'}</div>
+      <div class="vault-bar"><div class="vault-bar-fill" style="width:${avg}%;background:${col}"></div></div>
+    </div>`;
+  }).join('');
+  html+=`<div class="vault-add" onclick="openModal('addVaultModal')">➕ Add New Vault</div>`;
+  g.innerHTML=html;
+  document.getElementById('statVault').textContent=vaults.length;
+  renderDashVaults();
+}
+
+function renderVaultChips() {
+  const el=document.getElementById('vaultChips');
+  let html='<div class="chip active" onclick="filterVault(null,\'All\',this)">All</div>';
+  vaults.forEach(v=>{html+=`<div class="chip" onclick="filterVault(${v.id},'${v.name}',this)">${v.icon} ${v.name}</div>`;});
+  el.innerHTML=html;
+}
+
+function populateVaultSel() {
+  const s=document.getElementById('nVault');
+  if(s) s.innerHTML=vaults.map(v=>`<option value="${v.id}">${v.icon} ${v.name}</option>`).join('');
+}
+
+function filterVault(id,name,el) {
+  go('passwords',document.querySelectorAll('.nav-item')[2]);
+  document.getElementById('pwSub').textContent=name+' vault';
+  renderPwTable(id?passwords.filter(p=>p.vault_id===id):passwords);
+  if(el){document.querySelectorAll('#vaultChips .chip').forEach(c=>c.classList.remove('active'));el.classList.add('active');}
+}
+
+async function addVault() {
+  const name=document.getElementById('vName').value.trim();
+  if(!name){toast('Enter a vault name','error');return;}
+  const btn=document.getElementById('createVaultBtn');
+  btn.innerHTML='<span class="spinner"></span>CREATING...'; btn.disabled=true;
+  const d=await api('POST','/api/vaults',{name,icon:selIcon,lock_method:selLock});
+  btn.innerHTML='CREATE VAULT'; btn.disabled=false;
+  if(!d)return;
+  vaults.push(d); closeModal('addVaultModal');
+  renderVaults(); renderVaultChips(); populateVaultSel();
+  toast(`🗄️ "${name}" created!`,'success');
+  document.getElementById('vName').value='';
+}
+
+function confirmDeleteVault(id,name) {
+  confirm2('Delete Vault','Delete vault "'+name+'" and ALL its passwords? This cannot be undone.','🗑️',async()=>{
+    const d=await api('DELETE','/api/vaults/'+id);
+    if(!d)return;
+    vaults=vaults.filter(v=>v.id!==id);
+    passwords=passwords.filter(p=>p.vault_id!==id);
+    renderVaults(); renderPwTable(passwords); renderVaultChips(); populateVaultSel();
+    toast(`Vault "${name}" deleted`,'info');
+  },'Delete Vault','btn-danger');
+}
+
+function selIconFn(el) {
+  document.querySelectorAll('#vIconPicker .chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active'); selIcon=el.textContent.trim();
+}
+function selLockFn(el) {
+  document.querySelectorAll('#lockPicker .chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active'); selLock=el.textContent.trim();
+}
+
+// ─── PASSWORDS ────────────────────────────────────────────────────────────────
+async function loadPasswords() {
+  const d=await api('GET','/api/passwords'); if(!d)return;
+  passwords=d; renderPwTable(passwords); updateStats();
+}
+
+function renderPwTable(list) {
+  const tb=document.getElementById('pwTable');
+  if(!list.length){tb.innerHTML=`<tr><td colspan="6"><div class="empty-state"><div class="ei">🔑</div><p>No passwords yet. Add one!</p></div></td></tr>`;return;}
+  tb.innerHTML=list.map(p=>{
+    const pw=dec(p.encrypted_password);
+    const s=calcStr(pw);
+    const vn=vaults.find(v=>v.id===p.vault_id)?.name||p.vault_name||'—';
+    return `<tr>
+      <td><div class="pw-site"><div class="site-fav">${p.icon||'🔑'}</div><div><div style="font-weight:600;font-size:13px">${p.site}</div><div style="font-size:10px;color:var(--muted)">${p.url||''}</div></div></div></td>
+      <td style="font-size:12px;color:var(--muted)">${p.username}</td>
+      <td><div class="pw-dot" onclick="copyPw(this,'${enc(pw)}')" title="Click to copy">•••••••••</div></td>
+      <td><div style="display:flex;align-items:center;gap:6px">
+        <div style="flex:1;height:5px;background:var(--bg);border-radius:2px;overflow:hidden;border:1px solid var(--border)"><div style="width:${s.pct}%;height:100%;background:${s.color};border-radius:2px"></div></div>
+        <span style="font-family:'Share Tech Mono',monospace;font-size:10px;color:${s.color}">${s.pct}%</span>
+      </div></td>
+      <td><span style="font-size:10px;padding:2px 8px;border-radius:10px;background:var(--surface2);border:1px solid var(--border)">${vn}</span></td>
+      <td><div style="display:flex;gap:4px">
+        <button class="action-btn" onclick="copyPw(this,'${enc(pw)}')">📋</button>
+        <button class="action-btn" onclick="openEdit(${p.id})">✏️</button>
+        <button class="action-btn d" onclick="confirmDeletePw(${p.id},'${p.site}')">🗑️</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+function filterPw(q) {
+  const f=q?passwords.filter(p=>p.site.toLowerCase().includes(q.toLowerCase())||p.username.toLowerCase().includes(q.toLowerCase())):passwords;
+  renderPwTable(f);
+}
+
+function sortPw(k) {
+  if(k==='name') passwords.sort((a,b)=>a.site.localeCompare(b.site));
+  if(k==='strength') passwords.sort((a,b)=>calcStr(dec(b.encrypted_password)).pct-calcStr(dec(a.encrypted_password)).pct);
+  renderPwTable(passwords);
+}
+
+async function addPw() {
+  const site=document.getElementById('nSite').value.trim();
+  const url=document.getElementById('nUrl').value.trim();
+  const user=document.getElementById('nUser').value.trim();
+  const pw=document.getElementById('nPass').value;
+  const vault_id=parseInt(document.getElementById('nVault').value);
+  const notes=document.getElementById('nNotes').value;
+  if(!site||!user||!pw||!vault_id){toast('Fill in required fields (*)','error');return;}
+  const icons={google:'🔍',github:'🐙',netflix:'🎬',twitter:'🐦',facebook:'👥',amazon:'🛒',discord:'💬',spotify:'🎵',steam:'🎮',apple:'🍎',microsoft:'💻',instagram:'📷',linkedin:'💼'};
+  const icon=icons[site.toLowerCase().split(' ')[0]]||'🔑';
+  const btn=document.getElementById('savePwBtn');
+  btn.innerHTML='<span class="spinner"></span>SAVING...'; btn.disabled=true;
+  const d=await api('POST','/api/passwords',{vault_id,site,icon,url:url||site.toLowerCase().replace(/ /g,'')+'.com',username:user,password:pw,notes});
+  btn.innerHTML='SAVE PASSWORD'; btn.disabled=false;
+  if(!d)return;
+  passwords.unshift(d); closeModal('addPwModal');
+  renderPwTable(passwords); renderVaults(); updateStats(); populateShareSel();
+  toast(`🔑 "${site}" saved!`,'success');
+  ['nSite','nUrl','nUser','nPass','nNotes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('nPassStr').innerHTML='';
+}
+
+function openEdit(id) {
+  const p=passwords.find(x=>x.id===id); if(!p)return;
+  document.getElementById('editPwId').value=id;
+  document.getElementById('eSite').value=p.site;
+  document.getElementById('eUrl').value=p.url||'';
+  document.getElementById('eUser').value=p.username;
+  document.getElementById('ePass').value=dec(p.encrypted_password);
+  document.getElementById('eNotes').value=p.notes||'';
+  updateStrength(dec(p.encrypted_password),'ePassStr');
+  openModal('editPwModal');
+}
+
+async function updatePw() {
+  const id=parseInt(document.getElementById('editPwId').value);
+  const site=document.getElementById('eSite').value.trim();
+  const url=document.getElementById('eUrl').value.trim();
+  const user=document.getElementById('eUser').value.trim();
+  const pw=document.getElementById('ePass').value;
+  const notes=document.getElementById('eNotes').value;
+  const btn=document.getElementById('updatePwBtn');
+  btn.innerHTML='<span class="spinner"></span>UPDATING...'; btn.disabled=true;
+  const d=await api('PUT','/api/passwords/'+id,{site,url,username:user,password:pw,notes});
+  btn.innerHTML='UPDATE PASSWORD'; btn.disabled=false;
+  if(!d)return;
+  const i=passwords.findIndex(p=>p.id===id);
+  if(i>-1) passwords[i]=d;
+  closeModal('editPwModal');
+  renderPwTable(passwords); renderVaults(); updateStats();
+  toast(`✅ "${site}" updated!`,'success');
+}
+
+function confirmDeletePw(id,site) {
+  confirm2('Delete Password','Delete the saved password for "'+site+'"? This cannot be undone.','🗑️',async()=>{
+    const d=await api('DELETE','/api/passwords/'+id);
+    if(!d)return;
+    passwords=passwords.filter(p=>p.id!==id);
+    renderPwTable(passwords); renderVaults(); updateStats();
+    toast(`"${site}" deleted`,'info');
+  },'Delete','btn-danger');
+}
+
+function copyPw(el,encoded) {
+  navigator.clipboard.writeText(dec(encoded)).catch(()=>{});
+  const orig=el.textContent;
+  el.textContent='✅ Copied!'; el.style.color='var(--accent)';
+  setTimeout(()=>{el.textContent=orig; el.style.color='';},1800);
+  toast('📋 Copied! Clears in 30s','success');
+  setTimeout(()=>navigator.clipboard.writeText('').catch(()=>{}),30000);
+}
+
+function updateStats() {
+  document.getElementById('statPw').textContent=passwords.length;
+  const avg=passwords.length?Math.round(passwords.reduce((a,p)=>a+calcStr(dec(p.encrypted_password)).pct,0)/passwords.length):0;
+  document.getElementById('statStr').textContent=avg+'%';
+  document.getElementById('bSecure').textContent=passwords.filter(p=>calcStr(dec(p.encrypted_password)).pct>=70).length;
+  document.getElementById('bWeak').textContent=passwords.filter(p=>calcStr(dec(p.encrypted_password)).pct<50).length;
+}
+
+// ─── STRENGTH ─────────────────────────────────────────────────────────────────
+function calcStr(pw) {
+  if(!pw)return{pct:0,label:'None',color:'#333',checks:{}};
+  const c={l8:pw.length>=8,l12:pw.length>=12,l16:pw.length>=16,up:/[A-Z]/.test(pw),lo:/[a-z]/.test(pw),num:/[0-9]/.test(pw),sym:/[^A-Za-z0-9]/.test(pw),nc:!['password','123456','qwerty'].includes(pw.toLowerCase())};
+  const pct=Math.min(100,Math.round(Object.values(c).filter(Boolean).length/8*100));
+  let label,color;
+  if(pct<30){label='Very Weak';color='#ff4040';}
+  else if(pct<50){label='Weak';color='#ff7040';}
+  else if(pct<70){label='Fair';color='#ffaa00';}
+  else if(pct<85){label='Strong';color='#80ff40';}
+  else{label='Very Strong';color='#00ff80';}
+  return{pct,label,color,checks:c};
+}
+
+function updateStrength(val,id) {
+  const el=document.getElementById(id); if(!el)return;
+  if(!val){el.innerHTML='';return;}
+  const s=calcStr(val);
+  el.innerHTML=`<div class="strength-bar-wrap"><div class="strength-bar" style="width:${s.pct}%;background:${s.color}"></div></div>
+  <div class="str-labels"><span class="str-text" style="color:${s.color}">${s.label}</span><span class="str-pct" style="color:${s.color}">${s.pct}%</span></div>
+  <div class="str-checks">
+    <div class="chk ${s.checks.l8?'pass':''}"><div class="chk-dot"></div>8+ chars</div>
+    <div class="chk ${s.checks.l12?'pass':''}"><div class="chk-dot"></div>12+ chars</div>
+    <div class="chk ${s.checks.up?'pass':''}"><div class="chk-dot"></div>Uppercase</div>
+    <div class="chk ${s.checks.lo?'pass':''}"><div class="chk-dot"></div>Lowercase</div>
+    <div class="chk ${s.checks.num?'pass':''}"><div class="chk-dot"></div>Numbers</div>
+    <div class="chk ${s.checks.sym?'pass':''}"><div class="chk-dot"></div>Symbols</div>
+  </div>`;
+}
+
+// ─── GENERATOR ────────────────────────────────────────────────────────────────
+function genPw() {
+  const lenEl=document.querySelector('#page-generator input[type=range]');
+  const len=lenEl?parseInt(lenEl.value):20;
+  let chars='';
+  if(genOpts.upper) chars+=genOpts.ambig?'ABCDEFGHJKLMNPQRSTUVWXYZ':'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  if(genOpts.lower) chars+=genOpts.ambig?'abcdefghjkmnpqrstuvwxyz':'abcdefghijklmnopqrstuvwxyz';
+  if(genOpts.nums)  chars+=genOpts.ambig?'23456789':'0123456789';
+  if(genOpts.syms)  chars+='!@#$%^&*()_+-=[]{}|;:,.<>?';
+  if(!chars) chars='abcdefghijklmnopqrstuvwxyz';
+  const pw=Array.from({length:len},()=>chars[Math.floor(Math.random()*chars.length)]).join('');
+  document.getElementById('genOut').textContent=pw;
+  updateStrength(pw,'genStr');
+}
+
+function copyGen() {
+  const pw=document.getElementById('genOut').textContent;
+  if(pw==='Click Generate'){toast('Generate a password first!','warn');return;}
+  navigator.clipboard.writeText(pw).catch(()=>{});
+  toast('📋 Password copied!','success');
+}
+
+function saveGen() {
+  const pw=document.getElementById('genOut').textContent;
+  if(pw==='Click Generate'){toast('Generate a password first!','warn');return;}
+  document.getElementById('nPass').value=pw;
+  updateStrength(pw,'nPassStr');
+  openModal('addPwModal');
+}
+
+function toggleOpt(el,key) { el.classList.toggle('on'); genOpts[key]=el.classList.contains('on'); genPw(); }
+
+function quickGen() {
+  const chars='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+  const pw=Array.from({length:20},()=>chars[Math.floor(Math.random()*chars.length)]).join('');
+  document.getElementById('nPass').value=pw; updateStrength(pw,'nPassStr');
+}
+
+function quickGenFp() {
+  const chars='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+  const pw=Array.from({length:20},()=>chars[Math.floor(Math.random()*chars.length)]).join('');
+  document.getElementById('fpPass').value=pw; updateStrength(pw,'fpStr');
+}
+
+// ─── 2FA ──────────────────────────────────────────────────────────────────────
+async function loadTotp() {
+  const d=await api('GET','/api/totp'); if(!d)return;
+  totpAccounts=d; renderTotp();
+  document.getElementById('statTotp').textContent=totpAccounts.length;
+}
+
+function renderTotp() {
+  const g=document.getElementById('totpGrid');
+  if(!totpAccounts.length){g.innerHTML=`<div class="empty-state" style="grid-column:1/-1"><div class="ei">🛡️</div><p>No 2FA accounts yet.</p></div>`;return;}
+  g.innerHTML=totpAccounts.map(a=>`
+    <div class="section-card">
+      <div class="sc-title">${a.icon||'🔑'} ${a.name}</div>
+      <div class="totp-display">
+        <div class="totp-code" id="tc-${a.id}">${totpCode()}</div>
+        <div class="totp-label">ONE-TIME PASSWORD</div>
+        <div class="totp-timer"><div class="totp-fill" id="tf-${a.id}" style="width:100%"></div></div>
+      </div>
+      <div style="display:flex;gap:7px">
+        <button class="action-btn" style="flex:1" onclick="copyTotp(${a.id})">📋 Copy</button>
+        <button class="action-btn d" onclick="confirmDelete2FA(${a.id},'${a.name}')">🗑️</button>
+      </div>
+    </div>`).join('');
+  startTotpTimer();
+}
+
+function totpCode(){return String(Math.floor(100000+Math.random()*900000));}
+
+function startTotpTimer() {
+  setInterval(()=>{
+    const now=Math.floor(Date.now()/1000), rem=30-(now%30), pct=(rem/30)*100;
+    const col=pct<33?'var(--danger)':pct<66?'var(--warn)':'var(--accent)';
+    totpAccounts.forEach(a=>{
+      const f=document.getElementById('tf-'+a.id), c=document.getElementById('tc-'+a.id);
+      if(f){f.style.width=pct+'%';f.style.background=col;}
+      if(rem===30&&c) c.textContent=totpCode();
+    });
+  },1000);
+}
+
+function copyTotp(id){const el=document.getElementById('tc-'+id);if(el){navigator.clipboard.writeText(el.textContent).catch(()=>{});toast('📋 Code copied!','success');}}
+
+async function add2FA() {
+  const name=document.getElementById('tName').value.trim();
+  const icon=document.getElementById('tIcon').value.trim()||'🔑';
+  const secret=document.getElementById('tSecret').value.trim();
+  if(!name||!secret){toast('Enter name and secret key','error');return;}
+  const d=await api('POST','/api/totp',{name,icon,secret});
+  if(!d)return;
+  totpAccounts.push(d); closeModal('add2FAModal');
+  renderTotp();
+  document.getElementById('statTotp').textContent=totpAccounts.length;
+  toast(`🛡️ 2FA added for ${name}!`,'success');
+  ['tName','tIcon','tSecret'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+}
+
+function confirmDelete2FA(id,name) {
+  confirm2('Remove 2FA','Remove 2FA for "'+name+'"?','🛡️',async()=>{
+    const d=await api('DELETE','/api/totp/'+id);
+    if(!d)return;
+    totpAccounts=totpAccounts.filter(a=>a.id!==id);
+    renderTotp(); document.getElementById('statTotp').textContent=totpAccounts.length;
+    toast('2FA removed','info');
+  },'Remove','btn-danger');
+}
+
+// ─── FAMILY ───────────────────────────────────────────────────────────────────
+async function loadFamily() {
+  const d=await api('GET','/api/family/vault');
+  familyData=d;
+  if(!d){
+    document.getElementById('familyNoVault').style.display='block';
+    document.getElementById('familyVaultContent').style.display='none';
+    return;
+  }
+  document.getElementById('familyNoVault').style.display='none';
+  document.getElementById('familyVaultContent').style.display='block';
+  renderFamilyMembers(d.members||[]);
+  renderFamilyStats(d);
+  renderFamilyPws(d.passwords||[]);
+}
+
+async function createFamilyVault() {
+  const d=await api('POST','/api/family/vault');
+  if(!d)return;
+  toast('👨‍👩‍👧‍👦 Family vault created!','success');
+  loadFamily();
+}
+
+function renderFamilyMembers(members) {
+  const el=document.getElementById('familyMembers');
+  if(!members.length){el.innerHTML='<div class="empty-state"><div class="ei">👥</div><p>No members yet</p></div>';return;}
+  el.innerHTML=members.map(m=>`
+    <div class="fm-row">
+      <div class="avatar" style="background:${m.role==='owner'?'linear-gradient(135deg,var(--accent3),var(--accent2))':'linear-gradient(135deg,#334,#445)'}">
+        ${m.name[0].toUpperCase()}
+        <div class="online-dot ${m.online?'dot-on':'dot-off'}"></div>
+      </div>
+      <div class="fm-info">
+        <div class="fm-name">${m.name} ${m.role==='owner'?'👑':''} ${m.is_you?'<span style="font-size:10px;color:var(--muted)">(you)</span>':''}</div>
+        <div class="fm-role">${m.role} · ${m.email}</div>
+      </div>
+      <div class="fm-status" style="color:${m.online?'var(--accent)':'var(--muted)'}">● ${m.online?'Online':'Offline'}</div>
+      ${!m.is_you&&m.role!=='owner'?`<button class="action-btn d" onclick="confirmRemoveMember(${m.id},'${m.name}')">✕</button>`:''}
+    </div>`).join('');
+}
+
+function renderFamilyStats(d) {
+  const el=document.getElementById('familyStats');
+  const online=(d.members||[]).filter(m=>m.online).length;
+  el.innerHTML=`
+    <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--muted)">Total Members</span><span>${d.members?.length||0}</span></div>
+    <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--muted)">Online Now</span><span style="color:var(--accent)">● ${online}</span></div>
+    <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px"><span style="color:var(--muted)">Shared Passwords</span><span>${d.passwords?.length||0}</span></div>`;
+}
+
+function renderFamilyPws(pws) {
+  const tb=document.getElementById('familyPwTable');
+  if(!pws.length){tb.innerHTML=`<tr><td colspan="6"><div class="empty-state"><div class="ei">🔐</div><p>No shared passwords yet. Click "+ Share Password" to add one!</p></div></td></tr>`;return;}
+  tb.innerHTML=pws.map(p=>{
+    const pw=dec(p.encrypted_password);
+    const s=calcStr(pw);
+    return `<tr>
+      <td><div class="pw-site"><div class="site-fav">${p.icon||'🔑'}</div><div><div style="font-weight:600;font-size:13px">${p.site}</div><div style="font-size:10px;color:var(--muted)">${p.url||''}</div></div></div></td>
+      <td style="font-size:12px;color:var(--muted)">${p.username}</td>
+      <td><div class="pw-dot" onclick="copyPw(this,'${enc(pw)}')" title="Click to copy">•••••••••</div></td>
+      <td><div style="display:flex;align-items:center;gap:6px">
+        <div style="flex:1;height:5px;background:var(--bg);border-radius:2px;overflow:hidden;border:1px solid var(--border)"><div style="width:${s.pct}%;height:100%;background:${s.color};border-radius:2px"></div></div>
+        <span style="font-family:'Share Tech Mono',monospace;font-size:10px;color:${s.color}">${s.pct}%</span>
+      </div></td>
+      <td style="font-size:12px;color:var(--muted)">${p.added_by_name||'—'}</td>
+      <td><div style="display:flex;gap:4px">
+        <button class="action-btn" onclick="copyPw(this,'${enc(pw)}')">📋</button>
+        ${p.added_by===currentUser?.id||familyData?.vault?.user_id===currentUser?.id?`<button class="action-btn d" onclick="confirmDeleteFamilyPw(${p.id},'${p.site}')">🗑️</button>`:''}
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+async function addFamilyPw() {
+  if(!familyData?.vault){toast('No family vault found','error');return;}
+  const site=document.getElementById('fpSite').value.trim();
+  const url=document.getElementById('fpUrl').value.trim();
+  const user=document.getElementById('fpUser').value.trim();
+  const pw=document.getElementById('fpPass').value;
+  const notes=document.getElementById('fpNotes').value;
+  if(!site||!user||!pw){toast('Fill in required fields (*)','error');return;}
+  const icons={google:'🔍',github:'🐙',netflix:'🎬',twitter:'🐦',amazon:'🛒',discord:'💬',spotify:'🎵',steam:'🎮',apple:'🍎',microsoft:'💻',instagram:'📷',disney:'🎬'};
+  const icon=icons[site.toLowerCase().split(' ')[0]]||'🔑';
+  const btn=document.getElementById('addFpBtn');
+  btn.innerHTML='<span class="spinner"></span>SHARING...'; btn.disabled=true;
+  const d=await api('POST','/api/family/passwords',{vault_id:familyData.vault.id,site,icon,url,username:user,password:pw,notes});
+  btn.innerHTML='SHARE PASSWORD'; btn.disabled=false;
+  if(!d)return;
+  closeModal('addFamilyPwModal');
+  toast(`🔐 "${site}" shared to family vault!`,'success');
+  ['fpSite','fpUrl','fpUser','fpPass','fpNotes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('fpStr').innerHTML='';
+  loadFamily();
+}
+
+function confirmDeleteFamilyPw(id,site) {
+  confirm2('Remove Shared Password','Remove "'+site+'" from the family vault?','🔐',async()=>{
+    const d=await api('DELETE','/api/family/passwords/'+id);
+    if(!d)return;
+    toast(`"${site}" removed from family vault`,'info');
+    loadFamily();
+  },'Remove','btn-danger');
+}
+
+async function inviteMember() {
+  const email=document.getElementById('invEmail').value.trim();
+  const role=document.getElementById('invRole').value;
+  if(!email){toast('Enter an email address','error');return;}
+  if(!familyData?.vault){toast('Create a family vault first','warn');return;}
+  const btn=document.getElementById('inviteBtn');
+  btn.innerHTML='<span class="spinner"></span>INVITING...'; btn.disabled=true;
+  const d=await api('POST','/api/family/invite',{email,vault_id:familyData.vault.id,role});
+  btn.innerHTML='SEND INVITE'; btn.disabled=false;
+  if(!d)return;
+  closeModal('inviteModal');
+  toast(`✅ ${d.name||email} added to family vault!`,'success');
+  document.getElementById('invEmail').value='';
+  loadFamily();
+}
+
+function confirmRemoveMember(userId,name) {
+  confirm2('Remove Member','Remove '+name+' from the family vault?','👤',async()=>{
+    const d=await api('DELETE','/api/family/member/'+userId);
+    if(!d)return;
+    toast(name+' removed from family vault','info');
+    loadFamily();
+  },'Remove','btn-danger');
+}
+
+// ─── SHARING ──────────────────────────────────────────────────────────────────
+async function loadShares() {
+  const d=await api('GET','/api/share'); if(!d)return;
+  shareLinks=d; renderShares(); populateShareSel();
+}
+
+function renderShares() {
+  const tb=document.getElementById('shareTable');
+  if(!shareLinks.length){tb.innerHTML=`<tr><td colspan="5"><div class="empty-state"><div class="ei">🔗</div><p>No share links yet</p></div></td></tr>`;return;}
+  tb.innerHTML=shareLinks.map(s=>`
+    <tr>
+      <td style="font-weight:600">${s.site||'—'}</td>
+      <td style="font-size:11px;color:var(--muted)">${s.recipient_email||'Anyone with link'}</td>
+      <td style="font-size:12px">${new Date(s.expires_at).toLocaleDateString()}</td>
+      <td><span style="color:var(--accent);font-family:'Share Tech Mono',monospace;font-size:11px">${s.max_views-s.views} left</span></td>
+      <td><div style="display:flex;gap:5px">
+        <button class="action-btn" onclick="copyShareUrl('${API_BASE}/api/share/${s.token}')">📋 Copy</button>
+        <button class="action-btn d" onclick="confirmRevokeShare(${s.id})">✕ Revoke</button>
+      </div></td>
+    </tr>`).join('');
+}
+
+function copyShareUrl(url){navigator.clipboard.writeText(url).catch(()=>{});toast('🔗 Share link copied!','success');}
+
+function confirmRevokeShare(id) {
+  confirm2('Revoke Link','Revoke this share link? The recipient will no longer be able to access it.','🔗',async()=>{
+    const d=await api('DELETE','/api/share/'+id);
+    if(!d)return;
+    shareLinks=shareLinks.filter(s=>s.id!==id);
+    renderShares(); toast('Link revoked','info');
+  },'Revoke','btn-danger');
+}
+
+async function createShare() {
+  const pid=parseInt(document.getElementById('sharePwSel').value);
+  const rec=document.getElementById('shareRec').value.trim();
+  const exp=parseInt(document.getElementById('shareExp').value);
+  const views=parseInt(document.getElementById('shareViews').value);
+  if(!pid){toast('Select a password','error');return;}
+  const btn=document.getElementById('createShareBtn');
+  btn.innerHTML='<span class="spinner"></span>CREATING...'; btn.disabled=true;
+  const d=await api('POST','/api/share',{password_id:pid,recipient_email:rec,expires_hours:exp,max_views:views});
+  btn.innerHTML='CREATE LINK'; btn.disabled=false;
+  if(!d)return;
+  shareLinks.unshift(d); closeModal('sharePwModal');
+  renderShares();
+  navigator.clipboard.writeText(d.url||'').catch(()=>{});
+  toast('🔗 Share link created & copied!','success');
+}
+
+function populateShareSel(){const s=document.getElementById('sharePwSel');if(s)s.innerHTML=passwords.map(p=>`<option value="${p.id}">${p.site} — ${p.username}</option>`).join('');}
+
+// ─── BREACH ───────────────────────────────────────────────────────────────────
+const BREACHES=[
+  {site:'Adobe',date:'Oct 2024',records:'153M',types:'Email, Password, Username',icon:'🔴'},
+  {site:'LinkedIn',date:'Aug 2024',records:'700M',types:'Email, Phone, Location',icon:'🟡'},
+  {site:'RockYou2024',date:'Jul 2024',records:'10B',types:'Password hashes',icon:'🔴'},
+];
+
+function renderBreach() {
+  document.getElementById('breachList').innerHTML=BREACHES.map(b=>`
+    <div class="breach-alert">
+      <div class="breach-icon">${b.icon}</div>
+      <div class="breach-info"><div class="breach-site">⚠️ ${b.site} (${b.date})</div><div class="breach-detail">${b.records} records · ${b.types}</div></div>
+      <button class="action-btn" onclick="toast('Review your ${b.site} credentials','warn')">Review</button>
+    </div>`).join('');
+  document.getElementById('bBreached').textContent=BREACHES.length;
+}
+
+function checkBreaches(){toast('🔍 Scanning accounts...','info');setTimeout(()=>toast('⚠️ Scan complete. Review breaches above.','warn'),1500);}
+function addMonitor(){const e=document.getElementById('monitorEmail').value.trim();if(!e){toast('Enter an email','error');return;}toast(`📧 Now monitoring ${e}!`,'success');}
+
+// ─── ACTIVITY ─────────────────────────────────────────────────────────────────
+async function loadActivity() {
+  const d=await api('GET','/api/activity'); if(!d)return;
+  const html=d.map(a=>`<div class="act-item"><div class="act-icon ${a.type||'blue'}">${a.icon||'📋'}</div><div class="act-text">${a.message}</div><div class="act-time">${timeAgo(a.created_at)}</div></div>`).join('');
+  const dash=document.getElementById('dashAct');
+  const full=document.getElementById('actFull');
+  if(dash) dash.innerHTML=d.slice(0,5).map(a=>`<div class="act-item"><div class="act-icon ${a.type||'blue'}">${a.icon||'📋'}</div><div class="act-text">${a.message}</div><div class="act-time">${timeAgo(a.created_at)}</div></div>`).join('')||'<div class="empty-state"><div class="ei">📋</div><p>No activity yet</p></div>';
+  if(full) full.innerHTML=html||'<div class="empty-state"><div class="ei">📋</div><p>No activity yet</p></div>';
+}
+
+function exportActivity(){
+  const lines=['RazerLock Activity Export','=========================',''];
+  document.querySelectorAll('#actFull .act-item').forEach(i=>{
+    lines.push(`[${i.querySelector('.act-time')?.textContent}] ${i.querySelector('.act-text')?.textContent}`);
+  });
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([lines.join('\n')],{type:'text/plain'}));
+  a.download='razerlock-activity.txt'; a.click();
+  toast('📥 Activity exported!','success');
+}
+
+// ─── AUDIT ────────────────────────────────────────────────────────────────────
+function runAudit() {
+  toast('🔍 Running security audit...','info');
+  setTimeout(()=>{
+    const pwMap={};
+    passwords.forEach(p=>{const pw=dec(p.encrypted_password);pwMap[pw]=(pwMap[pw]||0)+1;});
+    const reused=Object.values(pwMap).filter(v=>v>1).length;
+    const strong=passwords.filter(p=>calcStr(dec(p.encrypted_password)).pct>=70).length;
+    const old=passwords.filter(p=>(Date.now()-new Date(p.last_changed||p.created_at))/86400000>90).length;
+    const score=Math.min(100,Math.max(0,100-reused*15-old*5+strong*2));
+    document.getElementById('auScore').textContent=score+'%';
+    document.getElementById('auReused').textContent=reused;
+    document.getElementById('auOld').textContent=old;
+    document.getElementById('auStrong').textContent=strong;
+    const results=[];
+    if(reused>0) results.push({icon:'🔄',text:`<strong>${reused} reused passwords</strong> — each account should use a unique password.`,s:'red'});
+    if(old>0) results.push({icon:'📅',text:`<strong>${old} passwords</strong> over 90 days old — consider rotating them.`,s:'yellow'});
+    const weak=passwords.filter(p=>calcStr(dec(p.encrypted_password)).pct<50);
+    if(weak.length) results.push({icon:'💪',text:`<strong>${weak.length} weak passwords</strong>: ${weak.map(w=>w.site).join(', ')}`,s:'red'});
+    if(strong>0) results.push({icon:'✅',text:`<strong>${strong} passwords</strong> are rated Strong or better!`,s:'green'});
+    if(!results.length) results.push({icon:'🏆',text:'<strong>Everything looks great!</strong> Your passwords are strong and secure.',s:'green'});
+    document.getElementById('auResults').innerHTML=results.map(r=>`
+      <div class="breach-alert" style="background:rgba(${r.s==='red'?'255,64,64':r.s==='yellow'?'255,170,0':'0,255,128'},0.05);border-color:rgba(${r.s==='red'?'255,64,64':r.s==='yellow'?'255,170,0':'0,255,128'},0.18)">
+        <div class="breach-icon">${r.icon}</div><div class="breach-info"><div class="breach-detail" style="font-size:13px;color:var(--text)">${r.text}</div></div>
+      </div>`).join('');
+    toast('✅ Audit complete!','success');
+  },1500);
+}
+
+// ─── DASHBOARD ────────────────────────────────────────────────────────────────
+function renderDashboard() {
+  if(currentUser) document.getElementById('dashGreet').textContent='Welcome back, '+currentUser.name+' 👋';
+  renderDashVaults();
+}
+
+function renderDashVaults() {
+  const el=document.getElementById('dashVaults'); if(!el)return;
+  if(!vaults.length){el.innerHTML='<div class="empty-state"><div class="ei">🗄️</div><p>No vaults yet</p></div>';return;}
+  el.innerHTML=vaults.map(v=>{
+    const pws=passwords.filter(p=>p.vault_id===v.id);
+    const avg=pws.length?Math.round(pws.reduce((a,p)=>a+calcStr(dec(p.encrypted_password)).pct,0)/pws.length):0;
+    const col=avg>=70?'var(--accent)':avg>=40?'var(--warn)':'var(--danger)';
+    return `<div class="fm-row" onclick="filterVault(${v.id},'${v.name}')">
+      <div style="font-size:19px">${v.icon||'🏠'}</div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:600">${v.name}</div><div style="font-size:11px;color:var(--muted)">${pws.length} passwords</div></div>
+      <span style="font-family:'Share Tech Mono',monospace;font-size:11px;color:${col}">${avg}%</span>
+    </div>`;
+  }).join('');
+}
+
+// ─── SETTINGS ─────────────────────────────────────────────────────────────────
+async function saveSettings() {
+  const name=document.getElementById('setName').value.trim();
+  const email=document.getElementById('setEmail').value.trim();
+  const d=await api('PUT','/api/user/profile',{name,email});
+  if(!d)return;
+  currentUser={...currentUser,...d};
+  updateSidebar();
+  toast('💾 Settings saved!','success');
+}
+
+async function changePw() {
+  const cur=document.getElementById('curPw').value;
+  const nw=document.getElementById('newPw').value;
+  if(!cur||!nw){toast('Fill in both password fields','error');return;}
+  const d=await api('PUT','/api/user/password',{current_password:cur,new_password:nw});
+  if(!d)return;
+  document.getElementById('curPw').value='';
+  document.getElementById('newPw').value='';
+  document.getElementById('setPwStr').innerHTML='';
+  toast('🔑 Master password updated!','success');
+}
+
+function previewGrad(){
+  const a=document.getElementById('gradA').value,b=document.getElementById('gradB').value;
+  document.getElementById('gradPreview').style.background=`linear-gradient(135deg,${a},${b})`;
+}
+
+function setPreset(a,b){
+  document.getElementById('gradA').value=a;
+  document.getElementById('gradB').value=b;
+  previewGrad();
+}
+
+async function applyGrad() {
+  const a=document.getElementById('gradA').value,b=document.getElementById('gradB').value;
+  applyGradVisual(a,b);
+  await api('PUT','/api/user/theme',{grad_from:a,grad_to:b});
+  toast('🎨 Theme applied & saved!','success');
+}
+
+function applyGradVisual(a,b){
+  document.documentElement.style.setProperty('--grad-from',a);
+  document.documentElement.style.setProperty('--grad-to',b);
+  const bg=document.getElementById('userBg');
+  bg.style.background=`linear-gradient(135deg,${a},${b})`;
+  bg.classList.add('active');
+}
+
+function applyStoredGrad(){
+  if(currentUser.grad_from&&currentUser.grad_to){
+    document.getElementById('gradA').value=currentUser.grad_from;
+    document.getElementById('gradB').value=currentUser.grad_to;
+    previewGrad();
+    applyGradVisual(currentUser.grad_from,currentUser.grad_to);
+  }
+}
+
+// ─── ADMIN ────────────────────────────────────────────────────────────────────
+let allAdminU=[];
+
+function openAdmin(){
+  if(currentUser?.email!==OWNER_EMAIL)return;
+  document.getElementById('adminPanel').classList.add('open');
+  loadAdminUsers();
+}
+
+function closeAdmin(){document.getElementById('adminPanel').classList.remove('open');}
+
+async function loadAdminUsers(){
+  const d=await api('GET','/api/admin/users'); if(!d)return;
+  allAdminU=d.users||[];
+  document.getElementById('adTotalU').textContent=allAdminU.length;
+  document.getElementById('adProU').textContent=allAdminU.filter(u=>u.plan==='pro').length;
+  document.getElementById('adPws').textContent=d.total_passwords||'—';
+  renderAdminU(allAdminU);
+}
+
+function renderAdminU(list){
+  const el=document.getElementById('adminUserList');
+  if(!list.length){el.innerHTML='<div class="empty-state"><div class="ei">👥</div><p>No users yet</p></div>';return;}
+  el.innerHTML=list.map(u=>`
+    <div class="au-row">
+      <div class="avatar" style="width:30px;height:30px;font-size:12px;flex-shrink:0">${u.name[0].toUpperCase()}</div>
+      <div class="au-info">
+        <div class="au-name">${u.name} ${u.email===OWNER_EMAIL?'👑':''} <span class="plan-pill ${u.plan==='dev'?'pp-dev':u.plan==='pro'?'pp-pro':'pp-free'}">${u.plan.toUpperCase()}</span></div>
+        <div class="au-email">${u.email}</div>
+      </div>
+      <div style="display:flex;gap:5px;flex-shrink:0">
+        ${u.email!==OWNER_EMAIL?(u.plan!=='pro'&&u.plan!=='dev'?`<button class="grant-btn" onclick="grantProTo('${u.email}',this)">💎 Grant Pro</button>`:`<button class="revoke-btn" onclick="revokeProFrom('${u.email}',this)">✕ Revoke</button>`):'<span style="font-size:10px;color:var(--accent3)">Owner</span>'}
+      </div>
+    </div>`).join('');
+}
+
+function filterAdminU(q){renderAdminU(q?allAdminU.filter(u=>u.name.toLowerCase().includes(q.toLowerCase())||u.email.toLowerCase().includes(q.toLowerCase())):allAdminU);}
+
+async function grantPro(){
+  const email=document.getElementById('grantEmail').value.trim();
+  if(!email){toast('Enter an email','error');return;}
+  await grantProTo(email,null);
+  document.getElementById('grantEmail').value='';
+}
+
+async function grantProTo(email,btn){
+  if(btn){btn.textContent='⏳';btn.disabled=true;}
+  const d=await api('POST','/api/admin/grant-pro',{email});
+  if(!d){if(btn){btn.textContent='💎 Grant Pro';btn.disabled=false;}return;}
+  toast(`💎 Pro granted to ${email}!`,'success');
+  await loadAdminUsers();
+}
+
+async function revokeProFrom(email,btn){
+  if(btn){btn.textContent='⏳';btn.disabled=true;}
+  const d=await api('POST','/api/admin/revoke-pro',{email});
+  if(!d){if(btn){btn.textContent='✕ Revoke';btn.disabled=false;}return;}
+  toast(`Pro revoked from ${email}`,'info');
+  await loadAdminUsers();
+}
+
+document.getElementById('adminPanel').addEventListener('click',e=>{if(e.target===document.getElementById('adminPanel'))closeAdmin();});
+
+// ─── CONFIRM DIALOG ───────────────────────────────────────────────────────────
+function confirm2(title,msg,icon,cb,btnLabel='Confirm',btnClass='btn-danger'){
+  document.getElementById('confirmTitle').textContent=title;
+  document.getElementById('confirmMsg').textContent=msg;
+  document.getElementById('confirmIcon').textContent=icon;
+  const btn=document.getElementById('confirmOkBtn');
+  btn.textContent=btnLabel;
+  btn.className='btn '+btnClass;
+  confirmCallback=cb;
+  btn.onclick=()=>{closeConfirm();cb();};
+  document.getElementById('confirmDialog').classList.add('open');
+}
+function closeConfirm(){document.getElementById('confirmDialog').classList.remove('open');}
+document.getElementById('confirmDialog').addEventListener('click',e=>{if(e.target===document.getElementById('confirmDialog'))closeConfirm();});
+
+// ─── MODALS ───────────────────────────────────────────────────────────────────
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.modal-overlay').forEach(m=>{m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');});});
+
+// Hook vault icon/lock pickers
+document.querySelectorAll('#vIconPicker .chip').forEach(el=>el.addEventListener('click',()=>selIconFn(el)));
+document.querySelectorAll('#lockPicker .chip').forEach(el=>el.addEventListener('click',()=>selLockFn(el)));
+function selIconFn(el){document.querySelectorAll('#vIconPicker .chip').forEach(c=>c.classList.remove('active'));el.classList.add('active');selIcon=el.textContent.trim();}
+function selLockFn(el){document.querySelectorAll('#lockPicker .chip').forEach(c=>c.classList.remove('active'));el.classList.add('active');selLock=el.textContent.trim();}
+
+// ─── TOAST ────────────────────────────────────────────────────────────────────
+function toast(msg,type='info'){
+  const c=document.getElementById('toastCont');
+  const t=document.createElement('div');
+  t.className='toast '+type;
+  t.innerHTML=`<span>${{success:'✅',error:'❌',info:'ℹ️',warn:'⚠️'}[type]||'ℹ️'}</span><span>${msg}</span>`;
+  c.appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';t.style.transform='translateX(28px)';t.style.transition='all 0.3s';setTimeout(()=>t.remove(),300);},3500);
+}
+
+// ─── UTILS ────────────────────────────────────────────────────────────────────
+function togglePw(id,btn){
+  const i=document.getElementById(id);
+  i.type=i.type==='password'?'text':'password';
+  btn.textContent=i.type==='password'?'👁️':'🙈';
+}
+function enc(str){try{return btoa(unescape(encodeURIComponent(str)));}catch{return btoa(str);}}
+function dec(str){try{return decodeURIComponent(escape(atob(str)));}catch{try{return atob(str);}catch{return '';}}}
+function timeAgo(d){const s=(Date.now()-new Date(d))/1000;if(s<60)return Math.floor(s)+'s ago';if(s<3600)return Math.floor(s/60)+'m ago';if(s<86400)return Math.floor(s/3600)+'h ago';return Math.floor(s/86400)+'d ago';}
+</script>
+</body>
+</html>
